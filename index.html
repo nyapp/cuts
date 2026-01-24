@@ -325,6 +325,60 @@
             padding: 8px;
         }
 
+        .visual-box .clear-btn {
+            display: none;
+        }
+
+        .visual-box.has-image:hover::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+
+        .visual-box.has-image:hover::after {
+            content: "×";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .bgm-box .clear-btn {
+            display: none;
+        }
+
+        .bgm-box.has-image:hover::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+
+        .bgm-box.has-image:hover::after {
+            content: "×";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+        }
+
         /* Header BGM box */
         .header-bgm {
             margin-top: 8px;
@@ -966,7 +1020,11 @@
         });
 
         box.addEventListener('click', () => {
-            currentTargetBgmBox = box;
+            if (box.matches(':hover')) {
+                clearBgm();
+            } else {
+                currentTargetBgmBox = box;
+            }
         });
 
         box.addEventListener('dragover', (e) => {
@@ -1033,6 +1091,12 @@
     function renderBgmToBox(file, box) {
         if (!file || !box) return;
 
+        // 入れ替え時に古いアセットを削除
+        const oldAssetId = box.dataset.assetId;
+        if (oldAssetId) {
+            assetStore.delete(oldAssetId);
+        }
+
         const nameLower = (file.name || '').toLowerCase();
         const extIsAudio = nameLower.endsWith('.mp3') || nameLower.endsWith('.wav') || nameLower.endsWith('.m4a') || nameLower.endsWith('.aac');
 
@@ -1048,6 +1112,7 @@
         box.dataset.kind = 'audio';
 
         const safeName = escapeHtml(fileName);
+        box.classList.add('has-image');
         box.innerHTML = `
             <div class="kind-badge">BGM</div>
             <div class="file-name" title="${safeName}">${safeName}</div>
@@ -1058,11 +1123,29 @@
     function clearBgm() {
         const box = document.getElementById('bgm-box');
         if (!box) return;
+        const assetId = box.dataset.assetId;
+        if (assetId) assetStore.delete(assetId);
+        box.classList.remove('has-image');
         box.innerHTML = '';
         box.removeAttribute('data-filename');
         box.removeAttribute('data-filetype');
         box.removeAttribute('data-kind');
+        box.removeAttribute('data-assetId');
+        box.removeAttribute('data-assetName');
         updateBgmActionButton();
+    }
+
+    function clearVisualBox(box) {
+        if (!box) return;
+        const assetId = box.dataset.assetId;
+        if (assetId) assetStore.delete(assetId);
+        box.innerHTML = '';
+        box.removeAttribute('data-filename');
+        box.removeAttribute('data-filetype');
+        box.removeAttribute('data-kind');
+        box.removeAttribute('data-assetId');
+        box.removeAttribute('data-assetName');
+        box.classList.remove('has-image', 'is-active');
     }
 
     // 画像/動画ファイルを読み込んでボックスに表示（ファイル名も表示）
@@ -1070,6 +1153,12 @@
     // - video/* : <video> を一時生成して canvas に描画し、サムネDataURLとして表示
     function renderImageToBox(file, box) {
         if (!file) return;
+
+        // 入れ替え時に古いアセットを削除
+        const oldAssetId = box.dataset.assetId;
+        if (oldAssetId) {
+            assetStore.delete(oldAssetId);
+        }
 
         const nameLower = (file.name || '').toLowerCase();
         const extIsVideo = nameLower.endsWith('.mov') || nameLower.endsWith('.mp4') || nameLower.endsWith('.m4v');
@@ -1357,11 +1446,15 @@
         // ただし、もしユーザーがクリップボード画像をCtrl+Vしたい場合のためにGlobal Pasteを実装。
         
         box.addEventListener('click', function(){
-            // クリックで常にこのボックスを操作対象にする
-            currentTargetBox = box;
-            // 視覚的なフォーカス表示（CSSクラスで統一）
-            document.querySelectorAll('.visual-box').forEach(b => b.classList.remove('is-active'));
-            box.classList.add('is-active');
+            if (box.matches(':hover')) {
+                clearVisualBox(box);
+            } else {
+                // クリックで常にこのボックスを操作対象にする
+                currentTargetBox = box;
+                // 視覚的なフォーカス表示（CSSクラスで統一）
+                document.querySelectorAll('.visual-box').forEach(b => b.classList.remove('is-active'));
+                box.classList.add('is-active');
+            }
         });
     }
 
@@ -2038,11 +2131,18 @@ function attachDurationNumericGuards(el) {
 
             // Add original asset files that were selected during this session
             // Note: Browser security prevents re-opening old files unless the user selected them again.
+            const usedAssetIds = new Set();
+            if (manifest.bgm && manifest.bgm.assetId) usedAssetIds.add(manifest.bgm.assetId);
+            manifest.rows.forEach(row => {
+                if (row.visual && row.visual.assetId) usedAssetIds.add(row.visual.assetId);
+            });
             for (const [assetId, file] of assetStore.entries()) {
-                const rawName = file.name || 'asset';
-                const zipName = `${assetId}_${sanitizeFilename(rawName)}`;
-                const buf = await file.arrayBuffer();
-                assetsFolder.file(zipName, buf);
+                if (usedAssetIds.has(assetId)) {
+                    const rawName = file.name || 'asset';
+                    const zipName = `${assetId}_${sanitizeFilename(rawName)}`;
+                    const buf = await file.arrayBuffer();
+                    assetsFolder.file(zipName, buf);
+                }
             }
 
             // Add thumbs from current UI when possible (optional)
@@ -2065,20 +2165,6 @@ function attachDurationNumericGuards(el) {
             setTimeout(() => {
                 try { URL.revokeObjectURL(url); } catch (_) {}
             }, 500);
-
-            // Basic validation warning: if a row references visualMeta but no assetId was captured, it won't be in ZIP
-            // (This happens when loading old JSON projects or when only thumbnails exist.)
-            const missing = [];
-            manifest.rows.forEach(r => {
-                if (!r.visual) return;
-                if (!assetStore.has(r.visual.assetId)) missing.push(r.no);
-            });
-            if (manifest.bgm && !assetStore.has(manifest.bgm.assetId)) {
-                // ok: no music requested, but keep warning for consistency
-            }
-            if (missing.length) {
-                alert(`ZIP exported. Note: original media files for these cuts were not bundled (likely loaded from an old JSON or not selected in this session): ${missing.join(', ')}`);
-            }
         } catch (err) {
             console.error(err);
             alert('Failed to export ZIP.');
