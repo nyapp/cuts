@@ -1,0 +1,46 @@
+cat << 'EOF' > .gitignore
+# ===== OS / Editor =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# ===== Node / Build =====
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== Temporary =====
+tmp/
+temp/
+.cache/
+
+# ===== User Generated Data =====
+*.zip
+*.json
+*.xml
+
+# ===== Media Assets =====
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.mp3
+*.wav
+*.aiff
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# ===== Export =====
+*.pdf
+
+# ===== Logs =====
+*.log
+EOF
