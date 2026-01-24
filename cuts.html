@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Production Instruction Sheet</title>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <style>
+        :root {
+            --border-color: #333;
+            --bg-color: #f9f9f9;
+            --text-color: #222;
+            --muted-text: #666;
+            --panel-bg: #f3f3f3;
+            --btn-bg: #e6e6e6;
+            --btn-bg-strong: #d9d9d9;
+            --btn-border: #333;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+        }
+
+        /* A4 Paper Styling */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 12mm 15mm 15mm 15mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+        }
+
+        /* Project title display (document-style title) */
+        .project-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            margin: 0 0 10px 0;
+            padding: 0;
+            color: var(--text-color);
+        }
+
+        /* Header Info */
+        .header-block {
+            background: #fafafa;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        .header-info {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .header-meta {
+            display: flex;
+            gap: 14px;
+            align-items: flex-end;
+            margin-left: auto;
+        }
+        .header-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .header-item label {
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .header-item input {
+            border: none;
+            border-bottom: 1px solid #ccc;
+            font-size: 14px;
+            padding: 4px;
+            width: 150px;
+            background: transparent;
+            color: var(--text-color);
+            box-shadow: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .header-item input:focus {
+            outline: none;
+            border-bottom-color: #999;
+        }
+
+        /* Some browsers render date inputs with an opaque inner background; force transparency */
+        .header-item input[type="date"] {
+            background-color: transparent;
+        }
+
+        /* Compact DATE field (metadata feel) */
+        .header-meta .header-item input[type="date"] {
+            width: 120px;
+        }
+
+        /* Neutralize WebKit autofill yellow/white fill so it doesn't look like a "floating" box */
+        .header-item input:-webkit-autofill,
+        .header-item input:-webkit-autofill:hover,
+        .header-item input:-webkit-autofill:focus {
+            -webkit-text-fill-color: var(--text-color);
+            transition: background-color 9999s ease-out 0s;
+            box-shadow: 0 0 0px 1000px rgba(250,250,250,0) inset;
+        }
+        .header-item select {
+            border: none;
+            border-bottom: 1px solid #ccc;
+            font-size: 14px;
+            padding: 4px;
+            width: 150px;
+            background: transparent;
+            color: var(--text-color);
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            box-shadow: none;
+            border-radius: 0;
+        }
+
+        .header-item select:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        /* (focus ring rule deleted) */
+
+        /* Production Specs */
+        .header-specs {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .header-specs .header-item input {
+            width: 180px;
+        }
+        .header-specs .header-item select { width: 180px; }
+        .header-specs .header-item label {
+            font-size: 11px;
+        }
+
+        /* Storyboard Grid */
+        .storyboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .storyboard-table th {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 5px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .storyboard-table td {
+            border: 1px solid var(--border-color);
+            vertical-align: top;
+            padding: 5px;
+            background: white;
+        }
+
+        /* Vertically center specific columns (No. / Duration / Start Time)
+           NOTE: Do NOT change td display from table-cell (it breaks row height). */
+        .storyboard-table tbody td:nth-child(1),
+        .storyboard-table tbody td:nth-child(4),
+        .storyboard-table tbody td:nth-child(5) {
+            vertical-align: middle;
+        }
+
+        /* No. column: center the number within the full cell height */
+        .storyboard-table tbody td:nth-child(1) .cut-number {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Duration / Start Time: center the small single-line textarea within tall rows */
+        .storyboard-table tbody td:nth-child(4),
+        .storyboard-table tbody td:nth-child(5) {
+            position: relative;
+        }
+
+        /* Caption column: enable absolute centering */
+        .storyboard-table tbody td:nth-child(3) {
+            position: relative;
+        }
+
+        .storyboard-table tbody td:nth-child(4) textarea,
+        .storyboard-table tbody td:nth-child(4) input,
+        .storyboard-table tbody td:nth-child(5) textarea,
+        .storyboard-table tbody td:nth-child(5) input {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100% - 10px);
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            overflow: hidden;
+            font-size: 12px; /* explicit, shared */
+        }
+
+        /* Center caption editor (horizontal + vertical)
+           IMPORTANT: Do not make the contenteditable itself a flex container.
+           Safari/IME caret + composition can behave oddly with flex contenteditables. */
+.storyboard-table tbody td:nth-child(3) .caption-wrap {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.storyboard-table tbody td:nth-child(3) .input-audio {
+    width: 100%;
+    /* Let the element size to its content so the wrapper can center it vertically */
+    height: auto;
+    max-height: 100%;
+    min-height: 1.2em; /* keep an editable target even when empty */
+    box-sizing: border-box;
+    display: block;
+
+    text-align: center;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    direction: ltr;
+    unicode-bidi: plaintext;
+
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    padding: 0;
+    outline: none;
+    overflow: hidden;
+}
+
+
+        /* Column Widths */
+        .col-no { width: 40px; }
+        .col-visual { width: 260px; } 
+        .col-audio { width: auto; }
+        .col-duration { width: 70px; }
+        .col-start { width: 80px; }
+
+        /* Visual Box Areas */
+        .visual-box {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #fff;
+            border: 1px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+        .visual-box.drag-over {
+            background-color: #eef;
+            border-color: #66f;
+        }
+
+        .visual-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            pointer-events: none; /* 画像自体はドラッグさせない */
+        }
+
+        /* File name label shown when an image is set */
+        .visual-box .file-name {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 2px 4px;
+            font-size: 9.5px;
+            line-height: 1.2;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.55);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .visual-box .kind-badge {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.65);
+            border-radius: 3px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Ensure placeholder only shows when truly empty (no img/label) */
+        .visual-box.has-image:empty::after {
+            content: "";
+        }
+        .visual-box:empty::after {
+            content: "Double-click or Drag & Drop";
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            white-space: pre;
+            padding: 8px;
+        }
+
+        /* Header BGM box */
+        .header-bgm {
+            margin-top: 8px;
+            margin-bottom: 6px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .bgm-box {
+            width: 520px;
+            max-width: 100%;
+            height: 34px;
+            border: 1px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            padding: 0 10px;
+            position: relative;
+            cursor: pointer;
+            overflow: visible;
+            background: transparent;
+            box-sizing: border-box;
+        }
+        .bgm-box.drag-over {
+            background-color: #eef;
+            border-color: #66f;
+        }
+        .bgm-box:empty::after {
+            content: "Double-click or Drag & Drop (Audio)";
+            font-size: 11px;
+            color: #666;
+            padding: 2px 0;
+            white-space: normal;
+            line-height: 34px;
+        }
+        .bgm-box .kind-badge {
+            position: static;
+            padding: 2px 6px;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #fff;
+            background: rgba(0,0,0,0.75);
+            border-radius: 3px;
+            pointer-events: none;
+            flex: 0 0 auto;
+        }
+        .bgm-box .file-name {
+            position: static;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.3;
+            color: #333;
+            background: transparent;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: normal;
+            word-break: break-word;
+            pointer-events: none;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .bgm-action {
+            height: 34px;
+            padding: 0 10px;
+            border-radius: 4px;
+            border: 1px solid var(--btn-border);
+            cursor: pointer;
+            background: var(--btn-bg);
+            color: var(--text-color);
+        }
+        .bgm-action.is-add { background: var(--btn-bg); color: var(--text-color); }
+        .bgm-action.is-clear { background: var(--btn-bg-strong); color: var(--text-color); }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            border: none;
+            background: transparent;
+            resize: none;
+            font-size: 12px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            outline: none;
+        }
+        input.input-duration,
+        input.input-start {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 12px;
+            padding: 0;
+            box-sizing: border-box;
+            text-align: center;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+
+            /* Prevent visible clipping in narrow cells */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+
+        input.input-duration:focus,
+        input.input-start:focus {
+            outline: none;
+        }
+
+        .cut-number {
+            text-align: center;
+            font-weight: 600;
+        }
+        /* Drag handle for row reorder */
+        .cut-number {
+            cursor: grab;
+            user-select: none;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #222;
+        }
+        /* No. column: subtle handle feel */
+        .storyboard-table tbody td:nth-child(1) {
+            background: #fafafa;
+        }
+        .storyboard-table tbody td:nth-child(1):hover {
+            background: #f2f2f2;
+        }
+        .storyboard-table tbody td:nth-child(1) .cut-number::before {
+            content: "≡";
+            display: inline-block;
+            margin-right: 6px;
+            color: #777;
+            font-weight: 400;
+        }
+        /* Keep the number readable */
+        .storyboard-table tbody td:nth-child(1) .cut-number {
+            gap: 0;
+        }
+        tr.dragging {
+            opacity: 0.5;
+        }
+        tr.drag-over {
+            outline: 2px dashed #666;
+        }
+
+        /* Buttons & Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 auto 10px auto;
+            width: 210mm;
+            max-width: 210mm;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .controls-left {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .controls-right {
+        margin-left: auto;
+    }
+    .controls button {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+    }
+    button {
+        padding: 6px 10px;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: 4px;
+        background: var(--btn-bg);
+        color: var(--text-color);
+        border: 1px solid var(--btn-border);
+    }
+    button:active { opacity: 0.85; }
+    .btn-print { background-color: var(--btn-bg-strong); color: var(--text-color); }
+    .btn-add { background-color: var(--btn-bg); color: var(--text-color); }
+    .btn-save { background-color: var(--btn-bg); color: var(--text-color); }
+    .btn-load { background-color: var(--btn-bg); color: var(--text-color); }
+
+    /* Transparent primary control buttons (text-only) */
+    .controls-left button {
+        background: transparent;
+        border: none;
+        padding: 6px 6px;
+    }
+
+    .controls-left button:hover {
+        text-decoration: underline;
+    }
+
+    .controls-left button:active {
+        opacity: 0.7;
+    }
+
+        .controls-separator {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            color: #999;
+            padding: 0 2px;
+            line-height: 1;
+            user-select: none;
+        }
+
+/* Hamburger menu (right side) */
+.hamburger-menu {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+}
+
+.hamburger-menu > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 6px 6px;
+  border-radius: 4px;
+  background: transparent;
+}
+.hamburger-menu > summary:active {
+  opacity: 0.7;
+}
+.hamburger-menu > summary:hover {
+  text-decoration: underline;
+}
+
+.hamburger-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hamburger-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 190px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  padding: 6px;
+  z-index: 50;
+}
+
+.hamburger-panel .menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+}
+
+.hamburger-panel .menu-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.hamburger-panel .menu-item:active {
+  opacity: 0.75;
+}
+/* Secondary (low priority) menu item */
+.hamburger-panel .menu-item.is-secondary {
+  color: #666;
+}
+
+.hamburger-panel .menu-note {
+  font-size: 10px;
+  color: #999;
+  margin-top: 2px;
+}
+        /* Hidden file input for click uploads */
+        #hidden-image-input { display: none; }
+
+        /* Print Settings */
+        @media print {
+            body { background: none; margin: 0; padding: 0; }
+            .page { width: 100%; box-shadow: none; padding: 0; margin: 0; border-radius: 0; border: none; }
+            .controls { display: none; }
+            textarea { resize: none; }
+            .visual-box { border: 1px solid #ccc; background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none; border-radius: 0; }
+            .visual-box:empty::after { display: none; }
+            tr { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <span class="controls-left">
+        <button class="btn-save" onclick="saveProjectZip()">SAVE ZIP</button>
+        <button class="btn-load" onclick="document.getElementById('file-input-zip').click()">LOAD ZIP</button>
+
+        <span class="controls-separator">/</span>
+
+        <input type="file" id="file-input-zip" accept=".zip" style="display:none" onchange="loadProjectZip(this)">
+        <input type="file" id="hidden-image-input" accept="image/*,video/*,.mov,.mp4,.m4v">
+        <button class="btn-add" onclick="addRow()">ADD SHOT</button>
+    </span>
+    <span class="controls-right">
+        <details class="hamburger-menu">
+  <summary aria-label="Export menu">EXPORT ▾</summary>
+  <div class="hamburger-panel">
+    <button class="menu-item" type="button" onclick="window.print(); closeHamburger(this);">
+      EXPORT PDF
+    </button>
+    <button class="menu-item is-secondary" type="button" onclick="exportDataJson(); closeHamburger(this);">
+      EXPORT DATA (JSON)
+      <div class="menu-note">Data only (no media)</div>
+    </button>
+  </div>
+</details>
+    </span>
+</div>
+
+<div class="page">
+    <div class="project-title" id="project-title-display">(Untitled)</div>
+    <div class="header-block">
+        <div class="header-info">
+            <div class="header-item">
+                <label>PROJECT TITLE (Delivery filename)</label>
+                <input type="text" id="h-title" placeholder="例：client_project_v01">
+            </div>
+            <div class="header-meta">
+                <div class="header-item">
+                    <label>DATE</label>
+                    <input type="date" id="h-date">
+                </div>
+                <div class="header-item">
+                    <label>VERSION</label>
+                    <input type="text" id="h-version" value="1.00" style="width: 60px; text-align: center;">
+                </div>
+            </div>
+        </div>
+        <div class="header-specs">
+            <div class="header-item">
+                <label>PLATFORM</label>
+                <select id="h-platform">
+                    <option value=""></option>
+                    <option value="Signage">Signage</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Instagram Reels">Instagram Reels</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="Web">Web</option>
+                    <option value="Internal">Internal</option>
+                </select>
+            </div>
+            <div class="header-item">
+                <label>FORMAT (Resolution / Aspect)</label>
+                <select id="h-format">
+                    <option value=""></option>
+                    <option value="1920x1080 / 16:9">1920x1080 / 16:9</option>
+                    <option value="1080x1920 / 9:16">1080x1920 / 9:16</option>
+                    <option value="1080x1080 / 1:1">1080x1080 / 1:1</option>
+                    <option value="2560x1440 / 16:9">2560x1440 / 16:9</option>
+                    <option value="3840x2160 / 16:9">3840x2160 / 16:9</option>
+                </select>
+            </div>
+            <div class="header-item">
+                <label>FPS</label>
+                <select id="h-fps">
+                    <option value=""></option>
+                    <option value="23.976">23.976</option>
+                    <option value="24">24</option>
+                    <option value="25">25</option>
+                    <option value="29.97">29.97</option>
+                    <option value="30">30</option>
+                    <option value="50">50</option>
+                    <option value="59.94">59.94</option>
+                    <option value="60">60</option>
+                </select>
+            </div>
+            <div class="header-item">
+                <label>LOUDNESS (LUFS / Peak)</label>
+                <select id="h-loudness">
+                    <option value=""></option>
+                    <option value="-14 LUFS / -1 dBTP">-14 LUFS / -1 dBTP</option>
+                    <option value="-16 LUFS / -1 dBTP">-16 LUFS / -1 dBTP</option>
+                    <option value="-23 LUFS / -1 dBTP">-23 LUFS / -1 dBTP</option>
+                </select>
+            </div>
+            <div class="header-item">
+                <label>DELIVERY (Codec / Container / Audio)</label>
+                <select id="h-delivery">
+                    <option value=""></option>
+                    <option value="H.264 / mp4 / AAC">H.264 / mp4 / AAC</option>
+                    <option value="H.265 / mp4 / AAC">H.265 / mp4 / AAC</option>
+                    <option value="ProRes 422 / mov / PCM">ProRes 422 / mov / PCM</option>
+                    <option value="ProRes 422 HQ / mov / PCM">ProRes 422 HQ / mov / PCM</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="header-bgm">
+            <div class="header-item">
+                <label>MAIN BGM</label>
+                <div class="bgm-box" id="bgm-box"></div>
+            </div>
+            <button class="bgm-action" id="bgm-action-btn" type="button">Add</button>
+            <input type="file" id="hidden-audio-input" accept="audio/*,.mp3,.wav,.m4a,.aac" style="display:none">
+        </div>
+    </div>
+
+    <table class="storyboard-table">
+        <thead>
+            <tr>
+                <th class="col-no">No.</th>
+                <th class="col-visual">Visual Reference</th>
+                <th class="col-audio">On-screen Text / Caption</th>
+                <th class="col-duration">Duration (sec)</th>
+                <th class="col-start">Start Time (mm:ss)</th>
+            </tr>
+        </thead>
+        <tbody id="storyboard-body">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    let currentTargetBox = null; // 現在画像を入れようとしているボックスを記憶
+    let currentTargetBgmBox = null;
+
+    // --- DOM helpers ---
+    const $ = (id) => document.getElementById(id);
+    const val = (id) => {
+        const el = $(id);
+        return el ? String(el.value || '') : '';
+    };
+
+    // --- Hamburger menu helpers ---
+    function closeHamburger(el) {
+        const details = el && el.closest ? el.closest('details.hamburger-menu') : null;
+        if (details) details.removeAttribute('open');
+    }
+
+    // Close hamburger menus when clicking outside
+    document.addEventListener('click', function (e) {
+        document.querySelectorAll('.hamburger-menu[open]').forEach(menu => {
+            if (!menu.contains(e.target)) {
+                menu.removeAttribute('open');
+            }
+        });
+    });
+
+    // --- Asset store for ZIP export ---
+    // Holds original File objects selected via picker / drag&drop so we can bundle them into ZIP.
+    const assetStore = new Map(); // assetId -> File
+    let assetSeq = 1;
+
+    function registerAssetWithId(assetId, file) {
+        if (!assetId || !file) return;
+        assetStore.set(assetId, file);
+        // Keep assetSeq ahead to avoid collisions for new assets created after loading
+        try {
+            const n = parseInt(String(assetId).replace(/^[^0-9]+/, ''), 10);
+            if (Number.isFinite(n) && n >= assetSeq) assetSeq = n + 1;
+        } catch (_) {}
+    }
+
+    function blobToDataUrl(blob) {
+        return new Promise((resolve) => {
+            if (!blob) return resolve('');
+            const r = new FileReader();
+            r.onload = () => resolve(String(r.result || ''));
+            r.onerror = () => resolve('');
+            r.readAsDataURL(blob);
+        });
+    }
+
+    function renderThumbToVisualBox(box, kind, safeName, thumbDataUrl) {
+        if (!box) return;
+        const label = kind === 'video' ? 'VID' : 'IMG';
+        box.classList.add('has-image');
+        if (thumbDataUrl) {
+            box.innerHTML = `
+                <div class="kind-badge">${label}</div>
+                <img src="${thumbDataUrl}" alt="${safeName}">
+                <div class="file-name" title="${safeName}">${safeName}</div>
+            `;
+        } else {
+            // Fallback: badge + filename only
+            box.innerHTML = `
+                <div class="kind-badge">${label}</div>
+                <div class="file-name" title="${safeName}">${safeName}</div>
+            `;
+        }
+    }
+
+    function sanitizeFilename(name) {
+        const base = (name || 'asset').toString();
+        return base.replace(/[\\\/:*?"<>|]/g, '_');
+    }
+
+    function makeAssetId(prefix) {
+        const p = (prefix || 'a').toString();
+        const id = String(assetSeq++).padStart(4, '0');
+        return `${p}${id}`;
+    }
+
+    function setBoxAsset(box, file, kind) {
+        if (!box || !file) return;
+        const rawName = file.name || 'asset';
+        const assetId = makeAssetId(kind === 'audio' ? 'm' : 'v');
+        assetStore.set(assetId, file);
+        box.dataset.assetId = assetId;
+        box.dataset.assetName = rawName; // immutable original name
+        box.dataset.filename = rawName;
+        box.dataset.kind = kind || box.dataset.kind || '';
+        box.dataset.filetype = file.type || box.dataset.filetype || '';
+    }
+
+    function dataUrlToUint8Array(dataUrl) {
+        // data:[<mime>];base64,<payload>
+        const m = String(dataUrl || '').match(/^data:([^;]+);base64,(.*)$/);
+        if (!m) return null;
+        const b64 = m[2];
+        const bin = atob(b64);
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        return { mime: m[1], bytes: u8 };
+    }
+
+    // --- Project title display sync ---
+    function updateProjectTitleDisplay() {
+        const input = document.getElementById('h-title');
+        const display = document.getElementById('project-title-display');
+        if (!display) return;
+        const v = input ? String(input.value || '').trim() : '';
+        display.textContent = v ? v : '(Untitled)';
+    }
+
+    function setupProjectTitleSync() {
+        const input = document.getElementById('h-title');
+        if (!input) return;
+        input.addEventListener('input', updateProjectTitleDisplay);
+        updateProjectTitleDisplay();
+    }
+    
+    // 初期化
+    window.onload = function() {
+        if(document.getElementById('storyboard-body').children.length === 0){
+            addRow(); addRow(); addRow();
+        }
+        setupImageInputListener();
+        setupAudioInputListener();
+        setupBgmBoxEvents();
+        setupBgmActionButton();
+        setupProjectTitleSync();
+        // --- Initial defaults (first load) ---
+        // Only apply defaults if fields are empty (do not override loaded projects)
+        const setIfEmpty = (id, value) => {
+            const el = document.getElementById(id);
+            if (el && !el.value) el.value = value;
+        };
+
+        // Standard defaults
+        setIfEmpty('h-format', '1920x1080 / 16:9');
+        setIfEmpty('h-fps', '29.97');
+        setIfEmpty('h-delivery', 'H.264 / mp4 / AAC');
+        setIfEmpty('h-loudness', '-14 LUFS / -1 dBTP');
+
+        // Platform default (explicitly Signage)
+        setIfEmpty('h-platform', 'Signage');
+        // Version default
+        setIfEmpty('h-version', '1.00');
+        recalcStartTimes();
+    };
+
+    // --- 画像アップロードの共通処理 ---
+    
+    // 隠しinputの変更イベント（クリック選択時）
+    function setupImageInputListener() {
+        const input = document.getElementById('hidden-image-input');
+        input.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0] && currentTargetBox) {
+                renderImageToBox(e.target.files[0], currentTargetBox);
+                input.value = ''; // リセット
+            }
+        });
+    }
+
+    // --- Audio (BGM) selection ---
+    function setupAudioInputListener() {
+        const input = document.getElementById('hidden-audio-input');
+        if (!input) return;
+        input.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0] && currentTargetBgmBox) {
+                renderBgmToBox(e.target.files[0], currentTargetBgmBox);
+                input.value = '';
+            }
+        });
+    }
+
+    function setupBgmBoxEvents() {
+        const box = document.getElementById('bgm-box');
+        if (!box) return;
+
+        box.addEventListener('dblclick', () => {
+            currentTargetBgmBox = box;
+            document.getElementById('hidden-audio-input').click();
+        });
+
+        box.addEventListener('click', () => {
+            currentTargetBgmBox = box;
+        });
+
+        box.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            box.classList.add('drag-over');
+        });
+
+        box.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            box.classList.remove('drag-over');
+        });
+
+        box.addEventListener('drop', (e) => {
+            e.preventDefault();
+            box.classList.remove('drag-over');
+            const f = (e.dataTransfer.files && e.dataTransfer.files[0]) ? e.dataTransfer.files[0] : null;
+            if (f) renderBgmToBox(f, box);
+        });
+        updateBgmActionButton();
+    }
+
+    // --- BGM action button (Add/Clear toggle) ---
+    function setupBgmActionButton() {
+        const btn = document.getElementById('bgm-action-btn');
+        if (!btn) return;
+
+        // Set initial state and bind the correct action
+        updateBgmActionButton();
+
+        // Rebind on each click (state may have changed)
+        btn.addEventListener('click', () => {
+            const box = document.getElementById('bgm-box');
+            if (!box) return;
+
+            const hasBgm = !!(box.dataset && box.dataset.kind === 'audio' && box.dataset.filename);
+            if (hasBgm) {
+                clearBgm();
+            } else {
+                currentTargetBgmBox = box;
+                const input = document.getElementById('hidden-audio-input');
+                if (input) input.click();
+            }
+        });
+    }
+
+    function updateBgmActionButton() {
+        const btn = document.getElementById('bgm-action-btn');
+        const box = document.getElementById('bgm-box');
+        if (!btn || !box) return;
+
+        const hasBgm = !!(box.dataset && box.dataset.kind === 'audio' && box.dataset.filename);
+
+        if (hasBgm) {
+            btn.textContent = 'Clear';
+            btn.classList.remove('is-add');
+            btn.classList.add('is-clear');
+        } else {
+            btn.textContent = 'Add';
+            btn.classList.remove('is-clear');
+            btn.classList.add('is-add');
+        }
+    }
+
+    function renderBgmToBox(file, box) {
+        if (!file || !box) return;
+
+        const nameLower = (file.name || '').toLowerCase();
+        const extIsAudio = nameLower.endsWith('.mp3') || nameLower.endsWith('.wav') || nameLower.endsWith('.m4a') || nameLower.endsWith('.aac');
+
+        const isAudio = (file.type && file.type.startsWith('audio/')) || (!file.type && extIsAudio);
+        if (!isAudio) return;
+
+        // Store original file for ZIP export
+        setBoxAsset(box, file, 'audio');
+
+        const fileName = (file.name && file.name.trim()) ? file.name.trim() : 'bgm';
+        box.dataset.filename = fileName;
+        box.dataset.filetype = file.type;
+        box.dataset.kind = 'audio';
+
+        const safeName = escapeHtml(fileName);
+        box.innerHTML = `
+            <div class="kind-badge">BGM</div>
+            <div class="file-name" title="${safeName}">${safeName}</div>
+        `;
+        updateBgmActionButton();
+    }
+
+    function clearBgm() {
+        const box = document.getElementById('bgm-box');
+        if (!box) return;
+        box.innerHTML = '';
+        box.removeAttribute('data-filename');
+        box.removeAttribute('data-filetype');
+        box.removeAttribute('data-kind');
+        updateBgmActionButton();
+    }
+
+    // 画像/動画ファイルを読み込んでボックスに表示（ファイル名も表示）
+    // - image/* : DataURLでそのまま表示
+    // - video/* : <video> を一時生成して canvas に描画し、サムネDataURLとして表示
+    function renderImageToBox(file, box) {
+        if (!file) return;
+
+        const nameLower = (file.name || '').toLowerCase();
+        const extIsVideo = nameLower.endsWith('.mov') || nameLower.endsWith('.mp4') || nameLower.endsWith('.m4v');
+
+        // MIME が空でも拡張子で動画と判断する
+        const isImage = file.type && file.type.startsWith('image/');
+        const isVideo = (file.type && file.type.startsWith('video/')) || (!file.type && extIsVideo);
+
+        const fileName = (file.name && file.name.trim()) ? file.name.trim() : 'clipboard-file';
+        box.dataset.filename = fileName;
+        box.dataset.filetype = file.type;
+        // Track kind for UI (image/video) and for save/load inference
+        box.dataset.kind = isVideo ? 'video' : (isImage ? 'image' : '');
+
+        // Store original file for ZIP export (image/video)
+        if (isImage) setBoxAsset(box, file, 'image');
+        if (isVideo) setBoxAsset(box, file, 'video');
+
+        // --- Image ---
+        if (isImage) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const safeName = escapeHtml(fileName);
+                box.classList.add('has-image');
+                box.innerHTML = `
+                    <div class="kind-badge">IMG</div>
+                    <img src="${e.target.result}" alt="${safeName}">
+                    <div class="file-name" title="${safeName}">${safeName}</div>
+                `;
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
+
+        // --- Video ---
+        if (isVideo) {
+            const safeName = escapeHtml(fileName);
+
+            // まずは「生成中」表示
+            box.classList.add('has-image');
+            box.innerHTML = `
+                <div class="file-name" title="${safeName}">${safeName}</div>
+            `;
+
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+
+            // 画面外に一時的に追加（Safari/Chromeでイベント/描画が安定しやすい）
+            video.style.position = 'fixed';
+            video.style.left = '-99999px';
+            video.style.top = '0';
+            video.style.width = '1px';
+            video.style.height = '1px';
+
+            video.preload = 'auto';
+            video.muted = true;
+            video.playsInline = true;
+            video.controls = false;
+            video.src = url;
+
+            document.body.appendChild(video);
+
+            const cleanup = () => {
+                try { URL.revokeObjectURL(url); } catch (_) {}
+                try { video.pause(); } catch (_) {}
+                try { video.remove(); } catch (_) {}
+            };
+
+            let captured = false;
+
+            const waitForFrame = () => {
+                // requestVideoFrameCallback があれば「描画可能なフレーム」を待つ
+                return new Promise((resolve) => {
+                    if (typeof video.requestVideoFrameCallback === 'function') {
+                        try {
+                            video.requestVideoFrameCallback(() => resolve());
+                            return;
+                        } catch (_) {}
+                    }
+                    // 無い場合は短い遅延で代用（デコード待ち）
+                    setTimeout(resolve, 80);
+                });
+            };
+
+            const seekTo = (timeSec) => {
+                return new Promise((resolve) => {
+                    let done = false;
+                    const finish = () => {
+                        if (done) return;
+                        done = true;
+                        resolve();
+                    };
+
+                    // Safariでseekedが来ない場合があるので timeupdate も併用
+                    const onSeeked = () => {
+                        video.removeEventListener('timeupdate', onTimeUpdate);
+                        finish();
+                    };
+                    const onTimeUpdate = () => {
+                        video.removeEventListener('seeked', onSeeked);
+                        finish();
+                    };
+
+                    video.addEventListener('seeked', onSeeked, { once: true });
+                    video.addEventListener('timeupdate', onTimeUpdate, { once: true });
+
+                    try {
+                        video.currentTime = Math.max(0, timeSec);
+                    } catch (_) {
+                        video.removeEventListener('seeked', onSeeked);
+                        video.removeEventListener('timeupdate', onTimeUpdate);
+                        finish();
+                    }
+
+                    // 念のための保険（イベントが来ない場合）
+                    setTimeout(() => {
+                        video.removeEventListener('seeked', onSeeked);
+                        video.removeEventListener('timeupdate', onTimeUpdate);
+                        finish();
+                    }, 700);
+                });
+            };
+
+            const isTooDark = (ctx, w, h) => {
+                try {
+                    // 簡易サンプリングで平均輝度を推定（全黒近いか判定）
+                    const sampleW = Math.min(64, w);
+                    const sampleH = Math.min(64, h);
+                    const img = ctx.getImageData(0, 0, sampleW, sampleH).data;
+                    let sum = 0;
+                    const n = sampleW * sampleH;
+                    for (let i = 0; i < img.length; i += 4) {
+                        sum += (img[i] * 0.2126) + (img[i + 1] * 0.7152) + (img[i + 2] * 0.0722);
+                    }
+                    const avg = sum / n;
+                    return avg < 8; // 0-255のうち平均8未満を「ほぼ黒」とみなす
+                } catch (_) {
+                    return false;
+                }
+            };
+
+            async function captureAt(timeSec) {
+                if (captured) return true;
+
+                try {
+                    await seekTo(timeSec);
+                    await waitForFrame();
+
+                    const canvas = document.createElement('canvas');
+                    const vw = video.videoWidth || 160;
+                    const vh = video.videoHeight || 90;
+                    canvas.width = vw;
+                    canvas.height = vh;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, vw, vh);
+
+                    // ほぼ黒なら別時刻で再試行
+                    if (isTooDark(ctx, vw, vh)) return false;
+
+                    const thumbDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+                    captured = true;
+                    box.classList.add('has-image');
+                    box.innerHTML = `
+                        <div class="kind-badge">VID</div>
+                        <img src="${thumbDataUrl}" alt="${safeName}">
+                        <div class="file-name" title="${safeName}">${safeName}</div>
+                    `;
+                    cleanup();
+                    return true;
+                } catch (err) {
+                    console.warn('Video thumbnail generation failed at', timeSec, err);
+                    return false;
+                }
+            }
+
+            const tryGenerate = async () => {
+                if (captured) return;
+
+                const d = Number.isFinite(video.duration) ? video.duration : 0;
+
+                // 候補時刻（秒）。冒頭は黒になりやすいので避ける。
+                const candidates = [];
+                if (d > 0) {
+                    candidates.push(Math.min(1.0, d * 0.10)); // 10% or 1s
+                    candidates.push(Math.min(2.0, d * 0.20)); // 20% or 2s
+                    candidates.push(d * 0.50);               // middle
+                    candidates.push(d * 0.80);               // 80%
+                } else {
+                    candidates.push(1.0);
+                    candidates.push(2.0);
+                }
+
+                for (const t of candidates) {
+                    const ok = await captureAt(t);
+                    if (ok) return;
+                }
+
+                // 最後までダメならフォールバック（ファイル名のみ）
+                if (!captured) {
+                    captured = true;
+                    box.classList.add('has-image');
+                    box.innerHTML = `
+                        <div class="file-name" title="${safeName}">${safeName}</div>
+                    `;
+                    cleanup();
+                }
+            };
+
+            // メタデータ取得後に生成開始
+            video.addEventListener('loadedmetadata', () => {
+                tryGenerate();
+            }, { once: true });
+
+            // loadedmetadata が来ない場合に備えて loadeddata でも拾う
+            video.addEventListener('loadeddata', () => {
+                tryGenerate();
+            }, { once: true });
+
+            video.addEventListener('error', () => {
+                // 失敗時はファイル名のみ
+                box.classList.add('has-image');
+                box.innerHTML = `
+                    <div class="file-name" title="${safeName}">${safeName}</div>
+                `;
+                cleanup();
+            }, { once: true });
+
+            // 明示的にロード開始
+            try { video.load(); } catch (_) {}
+
+            // 念のため：イベントが来ない環境向けのタイムアウト保険
+            setTimeout(() => {
+                if (!captured) tryGenerate();
+            }, 1200);
+
+            return;
+        }
+
+        // その他のファイルは何もしない
+        return;
+    }
+
+    // HTMLエスケープ（ファイル名表示用）
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // 各ボックスにイベントを設定する関数
+    function setupVisualBoxEvents(box) {
+        // 1. ダブルクリックでファイル選択
+        box.addEventListener('dblclick', function() {
+            currentTargetBox = box;
+            document.getElementById('hidden-image-input').click();
+        });
+
+        // 2. ドラッグ＆ドロップ
+        box.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            box.classList.add('drag-over');
+        });
+        box.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            box.classList.remove('drag-over');
+        });
+        box.addEventListener('drop', function(e) {
+            e.preventDefault();
+            box.classList.remove('drag-over');
+            const f = (e.dataTransfer.files && e.dataTransfer.files[0]) ? e.dataTransfer.files[0] : null;
+            if (f) renderImageToBox(f, box);
+        });
+
+        // 3. ペースト処理 (ボックスがフォーカスされている時、またはクリック直後)
+        // ※contenteditableではないdivのため、clickしてfocus状態を作る必要があるが、
+        // ユーザビリティ向上のため document全体でのpasteを監視し、
+        // 直近でクリックされたboxがあればそこに入れる等の制御も可能だが、
+        // ここではシンプルに「ボックスをクリックして選択状態(疑似)」にするUXは複雑になるため、
+        // ダブルクリックとD&Dを推奨機能とする。
+        // ただし、もしユーザーがクリップボード画像をCtrl+Vしたい場合のためにGlobal Pasteを実装。
+        
+        box.addEventListener('click', function(){
+            // クリックで常にこのボックスを操作対象にする
+            currentTargetBox = box;
+            // 視覚的なフォーカス表示（CSSクラスで統一）
+            document.querySelectorAll('.visual-box').forEach(b => b.classList.remove('is-active'));
+            box.classList.add('is-active');
+        });
+    }
+
+    // グローバルなペースト処理（安全化）
+    document.addEventListener('paste', function(e) {
+        if (!currentTargetBox) return;
+
+        const cd = e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
+        if (!cd || !cd.items) return;
+
+        for (const item of cd.items) {
+            if (item.kind === 'file') {
+                const blob = item.getAsFile();
+                if (blob) {
+                    renderImageToBox(blob, currentTargetBox);
+                    e.preventDefault();
+                }
+                break; // 1回のペーストで1枚のみ処理
+            }
+        }
+    });
+
+    // --- Keyboard navigation: Duration-only Tab ---
+    function focusDurationField(currentEl, direction) {
+        const fields = Array.from(document.querySelectorAll('.input-duration'));
+        const idx = fields.indexOf(currentEl);
+        if (idx === -1) return;
+
+        let nextIdx = idx + direction;
+        if (nextIdx < 0) nextIdx = 0;
+        if (nextIdx >= fields.length) nextIdx = fields.length - 1;
+
+        const nextEl = fields[nextIdx];
+        if (nextEl) {
+            nextEl.focus();
+            try { nextEl.select(); } catch (_) {}
+        }
+    }
+
+    function onDurationKeyDown(e) {
+        if (e.key !== 'Tab') return;
+        e.preventDefault();
+        // Shift+Tab = backward, Tab = forward
+        focusDurationField(e.target, e.shiftKey ? -1 : 1);
+    }
+
+    // --- IME global state (best-effort mitigation for Safari underline-stuck issue) ---
+    let activeComposingCaption = null;
+
+    function forceCommitComposition(el) {
+        if (!el) return;
+        // Only act if we think we're composing
+        const composing = (el.dataset && el.dataset.composing === 'true');
+        if (!composing) return;
+
+        // Best-effort commit strategy:
+        // 1) Write back textContent
+        // 2) Temporarily disable contenteditable to force IME to finalize
+        // This pattern is commonly effective in Safari/WebKit edge cases.
+        try {
+            const t = el.textContent;
+            el.textContent = t;
+        } catch (_) {}
+
+        try {
+            el.setAttribute('contenteditable', 'false');
+            // Force reflow
+            void el.offsetHeight;
+            el.setAttribute('contenteditable', 'true');
+        } catch (_) {}
+
+        try { el.dataset.composing = 'false'; } catch (_) {}
+        if (activeComposingCaption === el) activeComposingCaption = null;
+    }
+
+    // Capture pointer/focus changes to commit composition before the browser moves focus.
+    // Do NOT preventDefault; we just commit as early as possible.
+    document.addEventListener('pointerdown', (e) => {
+        const el = activeComposingCaption;
+        if (!el) return;
+        if (el.contains(e.target)) return;
+        forceCommitComposition(el);
+    }, true);
+
+    document.addEventListener('focusin', (e) => {
+        const el = activeComposingCaption;
+        if (!el) return;
+        if (el === e.target) return;
+        forceCommitComposition(el);
+    }, true);
+
+    // --- Keyboard navigation: On-screen Text / Caption-only Tab ---
+    function focusTextField(currentEl, direction) {
+        const fields = Array.from(document.querySelectorAll('.input-audio[contenteditable="true"]'));
+        const idx = fields.indexOf(currentEl);
+        if (idx === -1) return;
+
+        let nextIdx = idx + direction;
+        if (nextIdx < 0) nextIdx = 0;
+        if (nextIdx >= fields.length) nextIdx = fields.length - 1;
+
+        const nextEl = fields[nextIdx];
+        if (nextEl) {
+            nextEl.focus();
+            // Place caret at START (collapse(true))
+            try {
+                const range = document.createRange();
+                range.selectNodeContents(nextEl);
+                range.collapse(true);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } catch (_) {}
+        }
+    }
+
+    function onTextKeyDown(e) {
+        // During IME composition (Japanese conversion underline state), do not hijack Tab.
+        const composing = !!(e.isComposing || (e.target && e.target.dataset && e.target.dataset.composing === 'true'));
+        if (composing) return;
+
+        if (e.key !== 'Tab') return;
+        e.preventDefault();
+        focusTextField(e.target, e.shiftKey ? -1 : 1);
+    }
+
+    // --- IME (Japanese input) guard for contenteditable captions ---
+    function attachImeGuards(el) {
+        if (!el) return;
+
+        el.dataset.composing = 'false';
+
+        el.addEventListener('compositionstart', () => {
+            el.dataset.composing = 'true';
+            activeComposingCaption = el;
+        });
+
+        el.addEventListener('compositionend', () => {
+            el.dataset.composing = 'false';
+            if (activeComposingCaption === el) activeComposingCaption = null;
+        });
+
+        // Best-effort: if blur happens while composing, force a commit.
+        el.addEventListener('blur', () => {
+            forceCommitComposition(el);
+        });
+    }
+
+    // --- Duration numeric-only guards (caret-safe, IME-aware) ---
+function normalizeNumericString(raw) {
+    const s = String(raw || '');
+    let out = '';
+    let dotUsed = false;
+    for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (ch >= '0' && ch <= '9') {
+            out += ch;
+            continue;
+        }
+        if (ch === '.' && !dotUsed) {
+            out += ch;
+            dotUsed = true;
+            continue;
+        }
+        // drop everything else
+    }
+    return out;
+}
+
+function applyNormalizedValuePreserveCaret(el) {
+    if (!el) return;
+    const start = typeof el.selectionStart === 'number' ? el.selectionStart : null;
+    const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : null;
+    const before = String(el.value || '');
+    const after = normalizeNumericString(before);
+    if (after === before) return;
+
+    // Best-effort caret preservation: compute how many invalid chars were removed before the caret.
+    if (start != null && end != null) {
+        const left = before.slice(0, start);
+        const leftNorm = normalizeNumericString(left);
+        const newPos = leftNorm.length;
+        el.value = after;
+        try { el.setSelectionRange(newPos, newPos); } catch (_) {}
+    } else {
+        el.value = after;
+    }
+}
+
+function attachDurationNumericGuards(el) {
+    if (!el) return;
+
+    el.dataset.composing = 'false';
+
+    el.addEventListener('compositionstart', () => {
+        el.dataset.composing = 'true';
+    });
+
+    el.addEventListener('compositionend', () => {
+        el.dataset.composing = 'false';
+        // Sanitize once IME commits text
+        applyNormalizedValuePreserveCaret(el);
+        recalcStartTimes();
+    });
+
+    // Prevent invalid characters before they are inserted (avoids caret jumps)
+    el.addEventListener('beforeinput', (e) => {
+        // Don't interfere mid-composition
+        if (e.isComposing || el.dataset.composing === 'true') return;
+
+        // Handle text insertion
+        const t = e.inputType || '';
+        if (t === 'insertText' || t === 'insertCompositionText') {
+            const data = (e.data == null) ? '' : String(e.data);
+            const ok = data === '' || normalizeNumericString(data) === data;
+            if (!ok) {
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // Let deletions happen normally
+        if (t.startsWith('delete')) return;
+    });
+
+    // Sanitize pasted content
+    el.addEventListener('paste', (e) => {
+        if (!e.clipboardData) return;
+        const text = e.clipboardData.getData('text');
+        const cleaned = normalizeNumericString(text);
+        if (cleaned === text) return; // allow normal paste
+
+        e.preventDefault();
+        try {
+            const s = el.selectionStart;
+            const en = el.selectionEnd;
+            if (typeof s === 'number' && typeof en === 'number') {
+                el.setRangeText(cleaned, s, en, 'end');
+            } else {
+                el.value = normalizeNumericString(String(el.value || '') + cleaned);
+            }
+        } catch (_) {
+            el.value = normalizeNumericString(String(el.value || '') + cleaned);
+        }
+        recalcStartTimes();
+    });
+
+    // Final safety: sanitize on input after non-text inputTypes
+    el.addEventListener('input', () => {
+        if (el.dataset.composing === 'true') return;
+        applyNormalizedValuePreserveCaret(el);
+        recalcStartTimes();
+    });
+}
+    
+    // --- Timing helpers ---
+    // Parse seconds from user input (supports "", "12", "12.5"). Non-numeric -> 0
+    function parseSeconds(v) {
+        if (v == null) return 0;
+        const s = String(v).trim();
+        if (!s) return 0;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    // Format seconds for display in Start Time column as mm:ss
+    function formatSeconds(sec) {
+        if (!Number.isFinite(sec) || sec < 0) sec = 0;
+        const total = Math.floor(sec + 1e-9);
+        const mm = Math.floor(total / 60);
+        const ss = total % 60;
+        const mmStr = String(mm);
+        const ssStr = String(ss).padStart(2, '0');
+        return `${mmStr}:${ssStr}`;
+    }
+
+    // Recalculate Start Time for all rows based on cumulative Duration
+    function recalcStartTimes() {
+        const rows = document.querySelectorAll('#storyboard-body tr');
+        let t = 0;
+        rows.forEach(row => {
+            const durEl = row.querySelector('.input-duration');
+            const startEl = row.querySelector('.input-start');
+            const dur = durEl ? parseSeconds(durEl.value) : 0;
+            if (startEl) startEl.value = formatSeconds(t);
+            t += dur;
+        });
+    }
+
+    // --- Row reorder helpers ---
+    let draggingRow = null;
+
+    function renumberCuts() {
+        const rows = document.querySelectorAll('#storyboard-body tr');
+        rows.forEach((row, idx) => {
+            const no = row.querySelector('.cut-number');
+            if (no) no.textContent = idx + 1;
+        });
+        recalcStartTimes();
+    }
+
+    // --- 行追加・保存・読込 ---
+
+    function addRow(data = null) {
+        const tbody = document.getElementById('storyboard-body');
+        const rowCount = tbody.getElementsByTagName('tr').length + 1;
+        const newRow = document.createElement('tr');
+        
+        const visualContent = data ? data.visual : '';
+        const audioText = data ? data.audio : '';
+        // Backward compatible: older JSON may have `time` only
+        const durationText = data ? (data.duration ?? data.time ?? '') : '';
+        const visualMeta = data ? data.visualMeta : null;
+
+        newRow.innerHTML = `
+            <td draggable="true"><div class="cut-number">${rowCount}</div></td>
+            <td>
+                <div class="visual-box">${visualContent}</div>
+            </td>
+            <td><div class="caption-wrap"><div class="input-audio" contenteditable="true"></div></div></td>
+            <td><input class="input-duration" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${escapeHtml(durationText)}"></td>
+            <td><textarea class="input-start" style="text-align: center;" readonly></textarea></td>
+        `;
+        
+        tbody.appendChild(newRow);
+        // Set caption text (contenteditable)
+        const captionEl = newRow.querySelector('.input-audio');
+        if (captionEl) {
+            captionEl.textContent = audioText || '';
+        }
+        // Clicking empty space inside the caption cell should still focus the editor
+        const captionWrap = newRow.querySelector('.caption-wrap');
+        if (captionWrap && captionEl) {
+            captionWrap.addEventListener('mousedown', (e) => {
+                // If user clicked the wrapper (not directly the editable), focus the editable.
+                if (e.target === captionWrap) {
+                    e.preventDefault();
+                    captionEl.focus();
+                    try {
+                        const range = document.createRange();
+                        range.selectNodeContents(captionEl);
+                        range.collapse(true);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    } catch (_) {}
+                }
+            });
+        }
+
+        // Enable row drag & drop (via No. column)
+        const dragCell = newRow.querySelector('td[draggable="true"]');
+        dragCell.addEventListener('dragstart', (e) => {
+            draggingRow = newRow;
+            newRow.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        dragCell.addEventListener('dragend', () => {
+            draggingRow = null;
+            newRow.classList.remove('dragging');
+            document.querySelectorAll('#storyboard-body tr').forEach(r => r.classList.remove('drag-over'));
+            renumberCuts();
+        });
+
+        newRow.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!draggingRow || draggingRow === newRow) return;
+            newRow.classList.add('drag-over');
+        });
+
+        newRow.addEventListener('dragleave', () => {
+            newRow.classList.remove('drag-over');
+        });
+
+        newRow.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!draggingRow || draggingRow === newRow) return;
+
+            const tbody = document.getElementById('storyboard-body');
+            const rows = Array.from(tbody.children);
+            const dragIndex = rows.indexOf(draggingRow);
+            const dropIndex = rows.indexOf(newRow);
+
+            if (dragIndex < dropIndex) {
+                tbody.insertBefore(draggingRow, newRow.nextSibling);
+            } else {
+                tbody.insertBefore(draggingRow, newRow);
+            }
+        });
+
+        // 新しく作ったVisual Boxにイベントを付与
+        const newBox = newRow.querySelector('.visual-box');
+        const textEl = newRow.querySelector('.input-audio');
+        if (textEl) {
+            textEl.addEventListener('keydown', onTextKeyDown);
+            attachImeGuards(textEl);
+        }
+
+        // Restore visual metadata if available (for IMG/VID badge)
+        if (visualMeta && typeof visualMeta === 'object') {
+            if (visualMeta.filename) newBox.dataset.filename = visualMeta.filename;
+            if (visualMeta.filetype) newBox.dataset.filetype = visualMeta.filetype;
+            if (visualMeta.kind) newBox.dataset.kind = visualMeta.kind;
+            // New: restore asset references when available
+            if (visualMeta.assetId) newBox.dataset.assetId = visualMeta.assetId;
+            if (visualMeta.assetName) newBox.dataset.assetName = visualMeta.assetName;
+        }
+
+        // If visual already has an image, ensure has-image class and badge
+        if (newBox.querySelector('img')) {
+            newBox.classList.add('has-image');
+
+            const ft = (newBox.dataset.filetype || '').toLowerCase();
+            const kind = (newBox.dataset.kind || '').toLowerCase();
+            const isVid = kind === 'video' || ft.startsWith('video/');
+            const isImg = kind === 'image' || ft.startsWith('image/');
+
+            if (!newBox.querySelector('.kind-badge') && (isVid || isImg)) {
+                const badge = document.createElement('div');
+                badge.className = 'kind-badge';
+                badge.textContent = isVid ? 'VID' : 'IMG';
+                newBox.prepend(badge);
+            }
+        }
+
+        setupVisualBoxEvents(newBox);
+        // Duration input: caret-safe, numeric-only, IME-aware guard
+        const durationEl = newRow.querySelector('.input-duration');
+        if (durationEl) {
+            durationEl.addEventListener('keydown', onDurationKeyDown);
+            attachDurationNumericGuards(durationEl);
+        }
+
+        // Recalculate after adding row
+        recalcStartTimes();
+    }
+
+    function exportDataJson() {
+        // --- Data export (JSON). Version auto-increment is preserved for consistency. ---
+        const vEl = document.getElementById('h-version');
+        const currentV = vEl ? String(vEl.value || '').trim() : '';
+        const parsed = Number(currentV);
+        const base = Number.isFinite(parsed) ? parsed : 1.00;
+        const next = Math.round((base + 0.01) * 100) / 100; // keep 2 decimals
+        const nextStr = next.toFixed(2);
+        if (vEl) vEl.value = nextStr;
+
+        const bgmBox = $('bgm-box');
+        const bgmDs = (bgmBox && bgmBox.dataset) ? bgmBox.dataset : {};
+
+        const projectData = {
+            header: {
+                title: val('h-title'),
+                date: val('h-date'),
+                version: val('h-version'),
+                format: val('h-format'),
+                fps: val('h-fps'),
+                delivery: val('h-delivery'),
+                loudness: val('h-loudness'),
+                platform: val('h-platform'),
+                bgmMeta: {
+                    filename: bgmDs.filename || '',
+                    filetype: bgmDs.filetype || '',
+                    kind: bgmDs.kind || '',
+                    assetId: bgmDs.assetId || '',
+                    assetName: bgmDs.assetName || ''
+                }
+            },
+            rows: []
+        };
+        const rows = document.querySelectorAll('#storyboard-body tr');
+        rows.forEach(row => {
+            projectData.rows.push({
+                visual: row.querySelector('.visual-box').innerHTML,
+                audio: row.querySelector('.input-audio')
+    ? row.querySelector('.input-audio').textContent
+    : '',
+                duration: row.querySelector('.input-duration') ? row.querySelector('.input-duration').value : '',
+                startTime: row.querySelector('.input-start') ? row.querySelector('.input-start').value : '',
+                visualMeta: {
+                    filename: row.querySelector('.visual-box').dataset.filename || '',
+                    filetype: row.querySelector('.visual-box').dataset.filetype || '',
+                    kind: row.querySelector('.visual-box').dataset.kind || '',
+                    assetId: row.querySelector('.visual-box').dataset.assetId || '',
+                    assetName: row.querySelector('.visual-box').dataset.assetName || ''
+                },
+            });
+        });
+
+        const dataStr = JSON.stringify(projectData, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const title = projectData.header.title || "storyboard";
+        const version = projectData.header.version || "1.00";
+        const safeTitle = title.replace(/[\\\/:*?"<>|]/g, "_");
+        a.download = `${safeTitle}_v${version}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function loadProject(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.header) {
+                    document.getElementById('h-title').value = data.header.title || '';
+                    updateProjectTitleDisplay();
+                    document.getElementById('h-date').value = data.header.date || '';
+                    if (document.getElementById('h-version')) document.getElementById('h-version').value = (data.header.version || '1.00');
+                    if (document.getElementById('h-format')) document.getElementById('h-format').value = data.header.format || '';
+                    if (document.getElementById('h-fps')) document.getElementById('h-fps').value = data.header.fps || '';
+                    if (document.getElementById('h-delivery')) document.getElementById('h-delivery').value = data.header.delivery || '';
+                    if (document.getElementById('h-loudness')) document.getElementById('h-loudness').value = data.header.loudness || '';
+                    if (document.getElementById('h-platform')) document.getElementById('h-platform').value = data.header.platform || '';
+                    // Restore BGM meta (optional)
+                    if (data.header.bgmMeta && document.getElementById('bgm-box')) {
+                        const box = document.getElementById('bgm-box');
+                        const m = data.header.bgmMeta;
+                        if (m && typeof m === 'object' && m.filename) {
+                            box.dataset.filename = m.filename || '';
+                            box.dataset.filetype = m.filetype || '';
+                            box.dataset.kind = m.kind || 'audio';
+                            if (m.assetId) box.dataset.assetId = m.assetId;
+                            if (m.assetName) box.dataset.assetName = m.assetName;
+                            const safeName = escapeHtml(m.filename || '');
+                            box.innerHTML = `
+                                <div class="kind-badge">BGM</div>
+                                <div class="file-name" title="${safeName}">${safeName}</div>
+                            `;
+                            updateBgmActionButton();
+                        } else {
+                            clearBgm();
+                            updateBgmActionButton();
+                        }
+                    } else {
+                        clearBgm();
+                        updateBgmActionButton();
+                    }
+                }
+                const tbody = document.getElementById('storyboard-body');
+                tbody.innerHTML = ''; 
+                if (data.rows && Array.isArray(data.rows)) {
+                    data.rows.forEach(rowData => addRow(rowData));
+                }
+                // Recalculate Start Time after loading (even if JSON contains startTime)
+                recalcStartTimes();
+                renumberCuts();
+                // 旧データ/読み込みデータの見た目を整える（画像がある場合にクラス付与＆バッジ）
+                document.querySelectorAll('.visual-box').forEach(box => {
+                    if (box.querySelector('img')) box.classList.add('has-image');
+
+                    // Add kind badge if determinable and not already present
+                    if (box.querySelector('.kind-badge')) return;
+
+                    const ft = (box.dataset.filetype || '').toLowerCase();
+                    const kind = (box.dataset.kind || '').toLowerCase();
+
+                    const isVid = kind === 'video' || ft.startsWith('video/');
+                    const isImg = kind === 'image' || ft.startsWith('image/');
+
+                    if (isVid || isImg) {
+                        const badge = document.createElement('div');
+                        badge.className = 'kind-badge';
+                        badge.textContent = isVid ? 'VID' : 'IMG';
+                        box.prepend(badge);
+                    }
+                });
+                alert("Project loaded successfully.");
+            } catch (err) {
+                alert("Failed to load project.");
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+        input.value = '';
+    }
+
+    // --- ZIP export: manifest.json + assets/* ---
+    async function saveProjectZip() {
+        try {
+            // Version auto-increment (+0.01 per save) – keep the same behavior as JSON save
+            const vEl = document.getElementById('h-version');
+            const currentV = vEl ? String(vEl.value || '').trim() : '';
+            const parsed = Number(currentV);
+            const base = Number.isFinite(parsed) ? parsed : 1.00;
+            const next = Math.round((base + 0.01) * 100) / 100;
+            const nextStr = next.toFixed(2);
+            if (vEl) vEl.value = nextStr;
+
+            const title = val('h-title');
+            const version = val('h-version') || '1.00';
+            const safeTitle = (title || 'project').replace(/[\\\/:*?"<>|]/g, '_');
+
+            // Build manifest (generation-friendly)
+            const manifest = {
+                header: {
+                    title: title || '',
+                    date: val('h-date'),
+                    version: val('h-version'),
+                    format: val('h-format'),
+                    fps: val('h-fps'),
+                    delivery: val('h-delivery'),
+                    loudness: val('h-loudness'),
+                    platform: val('h-platform')
+                },
+                bgm: null,
+                rows: []
+            };
+
+            // BGM reference (optional)
+            const bgmBox = document.getElementById('bgm-box');
+            if (bgmBox && bgmBox.dataset && bgmBox.dataset.assetId) {
+                const id = bgmBox.dataset.assetId;
+                const name = sanitizeFilename(bgmBox.dataset.assetName || bgmBox.dataset.filename || 'bgm');
+                manifest.bgm = {
+                    assetId: id,
+                    file: `assets/${id}_${name}`,
+                    kind: 'audio',
+                    filetype: bgmBox.dataset.filetype || ''
+                };
+            }
+
+            // Collect rows
+            const rows = document.querySelectorAll('#storyboard-body tr');
+            rows.forEach((row, idx) => {
+                const box = row.querySelector('.visual-box');
+                const audio = row.querySelector('.input-audio')
+    ? row.querySelector('.input-audio').textContent
+    : '';
+                const duration = row.querySelector('.input-duration') ? row.querySelector('.input-duration').value : '';
+                const startTime = row.querySelector('.input-start') ? row.querySelector('.input-start').value : '';
+
+                const item = {
+                    no: idx + 1,
+                    caption: audio || '',
+                    duration: duration || '',
+                    startTime: startTime || '',
+                    visual: null
+                };
+
+                if (box && box.dataset && box.dataset.assetId) {
+                    const id = box.dataset.assetId;
+                    const name = sanitizeFilename(box.dataset.assetName || box.dataset.filename || `cut_${idx + 1}`);
+                    const kind = (box.dataset.kind || '').toLowerCase();
+                    item.visual = {
+                        assetId: id,
+                        file: `assets/${id}_${name}`,
+                        kind: kind || '',
+                        filetype: box.dataset.filetype || ''
+                    };
+                }
+
+                manifest.rows.push(item);
+            });
+
+            // Create ZIP
+            if (typeof JSZip === 'undefined') {
+                alert('JSZip is not available. Please check the network connection or the script tag.');
+                return;
+            }
+
+            const zip = new JSZip();
+            zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+            const assetsFolder = zip.folder('assets');
+            const thumbsFolder = zip.folder('thumbs');
+
+            // Add original asset files that were selected during this session
+            // Note: Browser security prevents re-opening old files unless the user selected them again.
+            for (const [assetId, file] of assetStore.entries()) {
+                const rawName = file.name || 'asset';
+                const zipName = `${assetId}_${sanitizeFilename(rawName)}`;
+                const buf = await file.arrayBuffer();
+                assetsFolder.file(zipName, buf);
+            }
+
+            // Add thumbs from current UI when possible (optional)
+            document.querySelectorAll('.visual-box').forEach((box) => {
+                const assetId = box && box.dataset ? box.dataset.assetId : '';
+                const img = box ? box.querySelector('img') : null;
+                if (!assetId || !img || !img.src || !String(img.src).startsWith('data:')) return;
+                const u = dataUrlToUint8Array(img.src);
+                if (!u) return;
+                thumbsFolder.file(`${assetId}.jpg`, u.bytes);
+            });
+
+            // Build and download
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${safeTitle}_v${version}.zip`;
+            a.click();
+            setTimeout(() => {
+                try { URL.revokeObjectURL(url); } catch (_) {}
+            }, 500);
+
+            // Basic validation warning: if a row references visualMeta but no assetId was captured, it won't be in ZIP
+            // (This happens when loading old JSON projects or when only thumbnails exist.)
+            const missing = [];
+            manifest.rows.forEach(r => {
+                if (!r.visual) return;
+                if (!assetStore.has(r.visual.assetId)) missing.push(r.no);
+            });
+            if (manifest.bgm && !assetStore.has(manifest.bgm.assetId)) {
+                // ok: no music requested, but keep warning for consistency
+            }
+            if (missing.length) {
+                alert(`ZIP exported. Note: original media files for these cuts were not bundled (likely loaded from an old JSON or not selected in this session): ${missing.join(', ')}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to export ZIP.');
+        }
+    }
+    // --- ZIP loader ---
+    async function loadProjectZip(input) {
+        const file = input && input.files ? input.files[0] : null;
+        if (!file) return;
+
+        if (typeof JSZip === 'undefined') {
+            alert('JSZip is not available. Please check the network connection or the script tag.');
+            input.value = '';
+            return;
+        }
+
+        try {
+            const buf = await file.arrayBuffer();
+            const zip = await JSZip.loadAsync(buf);
+
+            // --- Read manifest ---
+            const manifestEntry = zip.file('manifest.json');
+            if (!manifestEntry) {
+                alert('manifest.json not found in ZIP.');
+                input.value = '';
+                return;
+            }
+
+            const manifestText = await manifestEntry.async('string');
+            const manifest = JSON.parse(manifestText);
+
+            // --- Reset current state ---
+            assetStore.clear();
+
+            // --- Restore header ---
+            if (manifest && manifest.header) {
+                const h = manifest.header;
+                if (document.getElementById('h-title')) document.getElementById('h-title').value = h.title || '';
+                updateProjectTitleDisplay();
+                if (document.getElementById('h-date')) document.getElementById('h-date').value = h.date || '';
+                if (document.getElementById('h-version')) document.getElementById('h-version').value = (h.version || '1.00');
+                if (document.getElementById('h-format')) document.getElementById('h-format').value = h.format || '';
+                if (document.getElementById('h-fps')) document.getElementById('h-fps').value = h.fps || '';
+                if (document.getElementById('h-delivery')) document.getElementById('h-delivery').value = h.delivery || '';
+                if (document.getElementById('h-loudness')) document.getElementById('h-loudness').value = h.loudness || '';
+                if (document.getElementById('h-platform')) document.getElementById('h-platform').value = h.platform || '';
+            }
+
+            // --- Restore BGM ---
+            const bgmBox = document.getElementById('bgm-box');
+            if (bgmBox) {
+                if (manifest && manifest.bgm && manifest.bgm.assetId) {
+                    const b = manifest.bgm;
+                    const safeName = escapeHtml((b.file || '').split('/').pop() || 'bgm');
+                    bgmBox.dataset.assetId = b.assetId || '';
+                    bgmBox.dataset.assetName = (b.file || '').split('/').pop() || '';
+                    bgmBox.dataset.filename = bgmBox.dataset.assetName || '';
+                    bgmBox.dataset.filetype = b.filetype || '';
+                    bgmBox.dataset.kind = 'audio';
+                    bgmBox.innerHTML = `
+                        <div class="kind-badge">BGM</div>
+                        <div class="file-name" title="${safeName}">${safeName}</div>
+                    `;
+                } else {
+                    clearBgm();
+                }
+                updateBgmActionButton();
+            }
+
+            // --- Load assets into assetStore (as File objects) ---
+            const assetFiles = {};
+            const assetsFolder = zip.folder('assets');
+            if (assetsFolder) {
+                const assetNames = [];
+                assetsFolder.forEach((relativePath) => {
+                    if (relativePath && !relativePath.endsWith('/')) assetNames.push(relativePath);
+                });
+
+                for (const rel of assetNames) {
+                    const entry = zip.file(`assets/${rel}`);
+                    if (!entry) continue;
+
+                    const blob = await entry.async('blob');
+                    const m = String(rel).match(/^([a-zA-Z]+\d{4})_(.+)$/);
+                    const assetId = m ? m[1] : '';
+                    const name = m ? m[2] : rel; // original filename only (no prefix)
+
+                    // Best-effort mime inference
+                    const lower = name.toLowerCase();
+                    let mime = '';
+                    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mime = 'image/jpeg';
+                    else if (lower.endsWith('.png')) mime = 'image/png';
+                    else if (lower.endsWith('.webp')) mime = 'image/webp';
+                    else if (lower.endsWith('.gif')) mime = 'image/gif';
+                    else if (lower.endsWith('.mp4')) mime = 'video/mp4';
+                    else if (lower.endsWith('.mov')) mime = 'video/quicktime';
+                    else if (lower.endsWith('.m4v')) mime = 'video/x-m4v';
+                    else if (lower.endsWith('.mp3')) mime = 'audio/mpeg';
+                    else if (lower.endsWith('.wav')) mime = 'audio/wav';
+                    else if (lower.endsWith('.m4a')) mime = 'audio/mp4';
+                    else if (lower.endsWith('.aac')) mime = 'audio/aac';
+
+                    const f = new File([blob], name, { type: mime || blob.type || '' });
+                    if (assetId) {
+                        assetFiles[assetId] = f;
+                        registerAssetWithId(assetId, f);
+                    }
+                }
+            }
+
+            // --- Load thumbs as data URLs (optional) ---
+            const thumbsMap = {};
+            const thumbsFolder = zip.folder('thumbs');
+            if (thumbsFolder) {
+                const thumbNames = [];
+                thumbsFolder.forEach((relativePath) => {
+                    if (relativePath && !relativePath.endsWith('/')) thumbNames.push(relativePath);
+                });
+
+                for (const rel of thumbNames) {
+                    const entry = zip.file(`thumbs/${rel}`);
+                    if (!entry) continue;
+                    const blob = await entry.async('blob');
+                    const assetId = String(rel).replace(/\.[^.]+$/, '');
+                    const dataUrl = await blobToDataUrl(blob);
+                    if (assetId && dataUrl) thumbsMap[assetId] = dataUrl;
+                }
+            }
+
+            // --- Rebuild rows from manifest ---
+            const tbody = document.getElementById('storyboard-body');
+            if (tbody) tbody.innerHTML = '';
+
+            const rows = (manifest && Array.isArray(manifest.rows)) ? manifest.rows : [];
+            rows.forEach((r) => {
+                const visualMeta = (r && r.visual) ? {
+                    filename: (r.visual.file || '').split('/').pop() || '',
+                    filetype: r.visual.filetype || '',
+                    kind: r.visual.kind || '',
+                    assetId: r.visual.assetId || '',
+                    assetName: (r.visual.file || '').split('/').pop() || ''
+                } : null;
+
+                addRow({
+                    visual: '',
+                    audio: r && r.caption ? r.caption : '',
+                    duration: r && r.duration ? r.duration : '',
+                    visualMeta
+                });
+            });
+
+            // Apply visuals (thumb-first, fallback to filename/badge) and restore datasets
+            const uiRows = document.querySelectorAll('#storyboard-body tr');
+            uiRows.forEach((rowEl, idx) => {
+                const r = rows[idx];
+                if (!r || !r.visual) return;
+
+                const box = rowEl.querySelector('.visual-box');
+                if (!box) return;
+
+                const v = r.visual;
+                const assetId = v.assetId || '';
+                // Always strip assetId_ prefix from filename for UI restoration
+                const fileName = (v.file || '').split('/').pop().replace(new RegExp(`^${v.assetId}_`), '') || '';
+                const safeName = escapeHtml(fileName || `cut_${idx + 1}`);
+                const kind = (v.kind || '').toLowerCase();
+
+                box.dataset.assetId = assetId;
+                box.dataset.assetName = fileName;
+                box.dataset.filename = fileName;
+                box.dataset.filetype = v.filetype || (assetFiles[assetId] ? assetFiles[assetId].type : '');
+                box.dataset.kind = kind;
+
+                // If we have the actual file, ensure it is registered under the same assetId
+                if (assetId && assetFiles[assetId]) {
+                    registerAssetWithId(assetId, assetFiles[assetId]);
+                }
+
+                const thumb = assetId ? (thumbsMap[assetId] || '') : '';
+                if (kind === 'video' || kind === 'image') {
+                    renderThumbToVisualBox(box, kind, safeName, thumb);
+                } else {
+                    // Unknown kind: show filename only
+                    box.classList.add('has-image');
+                    box.innerHTML = `
+                        <div class="file-name" title="${safeName}">${safeName}</div>
+                    `;
+                }
+            });
+
+            recalcStartTimes();
+            renumberCuts();
+
+            alert('ZIP project loaded successfully.');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to load ZIP project.');
+        } finally {
+            input.value = '';
+        }
+    }
+</script>
+
+</body>
+</html>
+        /* Start Time = auto-calculated field */
+        .input-start {
+            color: #777;               /* muted */
+            font-style: italic;        /* "system-generated" feel */
+            cursor: default;           /* not text-edit */
+            user-select: none;
+        }
+
+        .input-start:focus {
+            caret-color: transparent;  /* no caret illusion */
+        }
