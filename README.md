@@ -85,3 +85,11 @@ jsPDF (v2.5.1) - PDF生成に使用（ローカルバンドル）
 免責事項
 
 本ソフトウェアは現状有姿（As-Is）で提供され、動作保証、不具合の修正、および使用方法のサポート義務を負いません。自己責任においてご利用ください。テスト版のため、データ損失の可能性があります。
+
+## License
+
+This project is currently released under CC BY-NC 4.0.
+Commercial use, resale, or redistribution for profit
+is not permitted without explicit permission.
+
+Licensing terms may change in future versions.
