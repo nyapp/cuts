@@ -1,4 +1,4 @@
-# Cuts　-　Cut-based Unified Timeline Sheet
+# CUTS　-　Cut-based Unified Timeline Sheet
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
@@ -6,7 +6,7 @@
 
 ## 📖 特徴
 
-- **インストール不要**: `cuts.html` をブラウザで開くだけですぐに使えます。
+- **インストール不要**: `index.html` をブラウザで開くだけですぐに使えます。
 - **ドラッグ＆ドロップ対応**: 画像や動画ファイルをボックスに放り込むだけでリファレンスとして表示されます。
 - **動画ファイル（mp4/mov等）はブラウザ上で自動的にサムネイルが生成されます。**
 - **自動時間計算**: 各カットの「Duration（秒数）」を入力すると、開始時間（Start Time）が自動で積算・計算されます。
@@ -19,7 +19,7 @@
 ## 🚀 使い方
 
 ### 起動
-`cuts.html` を Chrome, Edge, Safari などのモダンブラウザで開きます。利用前に確認ダイアログが表示されます。
+`index.html` を Chrome, Edge, Safari などのモダンブラウザで開きます。利用前に確認ダイアログが表示されます。
 
 ### 基本情報入力
 タイトル、日付、解像度、FPSなどのプロジェクト情報を入力します。
