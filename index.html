@@ -2204,7 +2204,19 @@ function attachDurationNumericGuards(el) {
                 const h = manifest.header;
                 if (document.getElementById('h-title')) document.getElementById('h-title').value = h.title || '';
                 updateProjectTitleDisplay();
-                if (document.getElementById('h-date')) document.getElementById('h-date').value = h.date || '';
+                if (document.getElementById('h-date')) {
+                    const dateEl = document.getElementById('h-date');
+                    if (h.date) {
+                        dateEl.value = h.date;
+                    } else {
+                        // Set current date if empty
+                        const today = new Date();
+                        const yyyy = today.getFullYear();
+                        const mm = String(today.getMonth() + 1).padStart(2, '0');
+                        const dd = String(today.getDate()).padStart(2, '0');
+                        dateEl.value = `${yyyy}-${mm}-${dd}`;
+                    }
+                }
                 if (document.getElementById('h-version')) document.getElementById('h-version').value = (h.version || '1.00');
                 if (document.getElementById('h-format')) document.getElementById('h-format').value = h.format || '';
                 if (document.getElementById('h-fps')) document.getElementById('h-fps').value = h.fps || '';
