@@ -54,15 +54,32 @@ function setupGlobalPasteListener() {
 
 function clearVisualBox(box) {
   if (!box) return;
+
+  // Remove the asset entry for this box (best-effort).
   const assetId = box.dataset.assetId;
-  if (assetId) assetStore.delete(assetId);
+  if (assetId) {
+    try {
+      assetStore.delete(assetId);
+    } catch (_) {}
+  }
+
+  // Clear UI
   box.innerHTML = "";
+  box.classList.remove("has-image", "is-active");
+
+  // Clear dataset in a consistent way (dataset uses camelCase; attributes are kebab-case)
+  delete box.dataset.filename;
+  delete box.dataset.filetype;
+  delete box.dataset.kind;
+  delete box.dataset.assetId;
+  delete box.dataset.assetName;
+
+  // Also remove attributes (kebab-case) to avoid stale values being serialized elsewhere
   box.removeAttribute("data-filename");
   box.removeAttribute("data-filetype");
   box.removeAttribute("data-kind");
-  box.removeAttribute("data-assetId");
-  box.removeAttribute("data-assetName");
-  box.classList.remove("has-image", "is-active");
+  box.removeAttribute("data-asset-id");
+  box.removeAttribute("data-asset-name");
 }
 
 // 画像/動画ファイルを読み込んでボックスに表示（ファイル名も表示）
