@@ -75,14 +75,6 @@ function bootstrapCUTS() {
     });
   }
 
-  const btnExportPdf = document.getElementById('btn-export-pdf');
-  if (btnExportPdf) {
-    btnExportPdf.addEventListener('click', (e) => {
-      window.print();
-      if (typeof closeHamburger === 'function') closeHamburger(e.currentTarget);
-    });
-  }
-
   const btnExportJson = document.getElementById('btn-export-json');
   if (btnExportJson) {
     btnExportJson.addEventListener('click', (e) => {

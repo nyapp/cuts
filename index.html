@@ -6,7 +6,6 @@
     <title>CUTS - Cut-based Unified Timeline Sheet</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <link rel="stylesheet" href="css/screen.css" media="all">
-<link rel="stylesheet" href="css/print.css" media="print">
 </head>
 <body>
 
@@ -20,20 +19,6 @@
         <input type="file" id="file-input-zip" accept=".zip" style="display:none">
         <input type="file" id="hidden-image-input" accept="image/*,video/*,.mov,.mp4,.m4v">
 <button class="btn-add" id="btn-add-shot" type="button">ADD SHOT</button>
-    </span>
-    <span class="controls-right">
-        <details class="hamburger-menu">
-  <summary aria-label="Export menu">EXPORT ▾</summary>
-  <div class="hamburger-panel">
-<button class="menu-item" id="btn-export-pdf" type="button">
-  EXPORT PDF
-</button>
-<button class="menu-item is-secondary" id="btn-export-json" type="button">
-  EXPORT DATA (JSON)
-  <div class="menu-note">Data only (no media)</div>
-</button>
-  </div>
-</details>
     </span>
 </div>
 
@@ -148,8 +133,6 @@
 <script src="js/50_timeline.js"></script>
 <script src="js/60_keyboard_ime.js"></script>
 <script src="js/70_zip_io.js"></script>
-<script src="js/71_json_io.js"></script>
-<script src="js/90_ui_hamburger.js"></script>
 <script src="js/02_sanity_check.js"></script>
 <script src="js/01_bootstrap.js"></script>
 </body>

@@ -17,7 +17,6 @@ function sanityCheckCUTS() {
     // IO
     'saveProjectZip',
     'loadProjectZip',
-    'exportDataJson',
   ];
 
   const missing = required.filter((name) => typeof window[name] !== 'function');

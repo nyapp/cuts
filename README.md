@@ -42,7 +42,6 @@ The README focuses on the conceptual entry point; detailed file-level documentat
 ### Presentation Layer
 - `index.html` — Application structure (no logic)
 - `css/screen.css` — Screen UI styles
-- `css/print.css` — Print / PDF styles
 
 ### Application Logic Layer
 - `js/01_bootstrap.js` — Application entry point
@@ -60,7 +59,6 @@ The README focuses on the conceptual entry point; detailed file-level documentat
 - `js/02_sanity_check.js` — Startup validation
 - `js/10_dom.js` — Shared DOM utilities
 - `js/60_keyboard_ime.js` — IME / keyboard safety
-- `js/90_ui_hamburger.js` — UI-only interactions
 
 ### Documentation
 - `docs/file-roles.md` — Detailed file responsibilities
