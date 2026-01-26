@@ -44,7 +44,8 @@ function addRow(data = null) {
   const audioText    = data ? (data.audio ?? data.caption ?? '') : '';
 
   // Duration (backward compatible)
-  const durationText = data ? (data.duration ?? data.time ?? '') : '';
+  const DEFAULT_DURATION = '5'; // seconds (used when no data is provided)
+  const durationText = data ? (data.duration ?? data.time ?? DEFAULT_DURATION) : DEFAULT_DURATION;
 
   // Start time (optional; recalculated later)
   const startTimeText = data ? (data.startTime ?? '') : '';

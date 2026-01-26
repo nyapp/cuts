@@ -1,22 +1,52 @@
-        /* Print Settings */
-        @media print {
-            body { background: none; margin: 0; padding: 0; }
-            .page { width: 100%; box-shadow: none; padding: 0; margin: 0; border-radius: 0; border: none; }
-            .controls { display: none; }
-            textarea { resize: none; }
-            .visual-box { border: 1px solid #ccc; background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none; border-radius: 0; }
-            .visual-box:empty::after { display: none; }
-            tr { page-break-inside: avoid; }
+/*
+  Print styles for CUTS
+  Goal: keep the on-screen layout as-is (WYSIWYG printing).
 
-            /* Start Time = auto-calculated field */
-            .input-start {
-                color: #777;               /* muted */
-                font-style: italic;        /* "system-generated" feel */
-                cursor: default;           /* not text-edit */
-                user-select: none;
-            }
+  Note:
+  - This file is loaded with media="print" from index.html, so rules here apply only when printing.
+  - We keep overrides minimal to avoid changing layout/spacing.
+*/ 
 
-            .input-start:focus {
-                caret-color: transparent;  /* no caret illusion */
-            }
-        }
+/* Ensure backgrounds/borders print (browser-dependent) */
+html, body {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Hide interactive UI controls only */
+.controls,
+details.hamburger-menu {
+  display: none !important;
+}
+
+/* Reduce unwanted page breaks inside rows */
+tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ---- Avoid splitting table rows across pages (best-effort) ---- */
+
+/* Repeat table header on each new printed page */
+thead { display: table-header-group; }
+tbody { display: table-row-group; }
+
+/* Prevent page breaks inside rows/cells */
+tr, td, th {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Encourage a whole row to move to the next page instead of splitting */
+tr { page-break-after: auto; }
+
+.storyboard-table {
+  page-break-inside: auto;
+}
+.storyboard-table tr {
+  page-break-inside: avoid;
+}
+
+/* If you want to remove shadows for cleaner prints, uncomment this:
+.page { box-shadow: none !important; }
+*/
