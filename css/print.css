@@ -1,0 +1,22 @@
+        /* Print Settings */
+        @media print {
+            body { background: none; margin: 0; padding: 0; }
+            .page { width: 100%; box-shadow: none; padding: 0; margin: 0; border-radius: 0; border: none; }
+            .controls { display: none; }
+            textarea { resize: none; }
+            .visual-box { border: 1px solid #ccc; background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none; border-radius: 0; }
+            .visual-box:empty::after { display: none; }
+            tr { page-break-inside: avoid; }
+
+            /* Start Time = auto-calculated field */
+            .input-start {
+                color: #777;               /* muted */
+                font-style: italic;        /* "system-generated" feel */
+                cursor: default;           /* not text-edit */
+                user-select: none;
+            }
+
+            .input-start:focus {
+                caret-color: transparent;  /* no caret illusion */
+            }
+        }

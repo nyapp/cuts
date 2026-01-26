@@ -1,75 +1,122 @@
-# CUTS　-　Cut-based Unified Timeline Sheet
+# CUTS  
+**Cut-based Unified Timeline Sheet**
 
-[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+CUTS is a local-first HTML application for planning video timelines in a cut-based manner.  
+It allows creators to design a storyboard-like timeline, calculate start times automatically,  
+and export the project for use in video editing workflows.
 
-ブラウザ上で動作する、映像制作のための簡易的な構成案（絵コンテ）・指示書作成ツールです。HTMLファイル単体で動作し、画像や動画素材をドラッグ＆ドロップして並べるだけで、時間計算済みの構成表を作成・PDF出力できます。
+This project is designed to be simple, maintainable, and tool-agnostic.
 
-## 📖 特徴
+---
 
-- **インストール不要**: `index.html` をブラウザで開くだけですぐに使えます。
-- **ドラッグ＆ドロップ対応**: 画像や動画ファイルをボックスに放り込むだけでリファレンスとして表示されます。
-- **動画ファイル（mp4/mov等）はブラウザ上で自動的にサムネイルが生成されます。**
-- **自動時間計算**: 各カットの「Duration（秒数）」を入力すると、開始時間（Start Time）が自動で積算・計算されます。
-- **プロジェクト保存**: 作業内容は画像・音声素材を含めた `.zip` ファイルとして保存・復元が可能です。
-- **PDFエクスポート**: ブラウザの印刷機能を使って、きれいなレイアウトでPDF出力が可能です。
-- **完全ローカル動作**: サーバーへのアップロードは一切行われません。機密性の高い案件でも安心して利用できます。
-- **オフライン対応**: JSZipライブラリをローカルにバンドルしているため、インターネット接続なしで動作可能です。
-  - ※ZIP機能のためにCDNからライブラリ(jszip)を読み込むため、初回のみインターネット接続が必要です。
+## Concept
 
-## 🚀 使い方
+CUTS separates concerns clearly:
 
-### 起動
-`index.html` を Chrome, Edge, Safari などのモダンブラウザで開きます。利用前に確認ダイアログが表示されます。
+- **HTML**: structure (what exists)
+- **CSS**: presentation (how it looks)
+- **JavaScript**: behavior (how it works)
 
-### 基本情報入力
-タイトル、日付、解像度、FPSなどのプロジェクト情報を入力します。
+The application runs entirely in the browser (no backend required) and supports
+both lightweight data export and full project archiving.
 
-### カット作成
-- **Visual**: 画像や動画をドラッグ＆ドロップします。
-- **Caption**: ナレーションやテロップなどを入力します。
-- **Duration**: 秒数を入力します（例: `5` や `2.5`）。これに応じて開始時間が自動計算されます。
+---
 
-### 編集
-- **行の並べ替え**: 左端の No. 列をドラッグして順番を入れ替えることができます。
-- **行の追加**: ADD SHOT ボタンでカットを追加します。
-- **BGM**: 画面上部のBGMエリアに音声ファイルをドラッグできます。
+## Features
 
-### 出力・保存
-- **PDF化**: 右上の EXPORT メニューから EXPORT PDF を選択（または `Ctrl+P` / `Cmd+P`）し、「PDFとして保存」を選んでください。jsPDFライブラリを使用して安定したレイアウトで出力されます。
-- **保存**: SAVE ZIP を押すと、現在の入力内容と使用している画像素材をまとめてZIPファイルとしてダウンロードできます。作業内容はブラウザのローカルストレージに自動保存されます。
-- **復元**: LOAD ZIP から保存したZIPファイルを読み込むと作業を再開できます。
+- Cut-based storyboard editing
+- Automatic Start Time calculation from Duration
+- Drag & drop row reordering
+- Visual (image / video) and BGM asset handling
+- ZIP-based project save/load (including assets)
+- JSON export (data only, no media)
+- Screen / Print style separation for clean PDF output
 
-## 🛠 技術仕様
+---
 
-| 項目       | 詳細                                      |
-|------------|-------------------------------------------|
-| 動作環境   | Google Chrome 90以上, Safari 14以上, Microsoft Edge 90以上, Firefox 88以上 |
-| 言語       | HTML5, CSS3, Vanilla JavaScript          |
-| 依存ライブラリ | - JSZip (v3.10.1) - プロジェクトのZIP圧縮・展開に使用（ローカルバンドル）<br>- jsPDF (v2.5.1) - PDF生成に使用（ローカルバンドル） |
+## Project Layers
 
-## ⚠️ 注意事項
+CUTS is structured in layers, each with a clear responsibility.
+The README focuses on the conceptual entry point; detailed file-level documentation lives in the `docs/` directory.
 
-- **ブラウザのキャッシュ**: ブラウザをリロードすると、保存していない内容は消えてしまいます。こまめに SAVE ZIP で保存することをお勧めします。
-- **動画サムネイル生成**: 動画ファイルのコーデックによってはサムネイルが生成できない場合があります（H.264/mp4推奨）。その場合は、手動で画像ファイルをアップロードしてください。ブラウザが再生可能な形式である必要があります。
-- **印刷設定**: PDF出力時は、印刷設定の「背景のグラフィック」を有効にすると、より画面の見た目に近い状態で出力されます。
+### Presentation Layer
+- `index.html` — Application structure (no logic)
+- `css/screen.css` — Screen UI styles
+- `css/print.css` — Print / PDF styles
 
-## 📄 ライセンス・利用規約
+### Application Logic Layer
+- `js/01_bootstrap.js` — Application entry point
+- `js/40_rows.js` — Row creation & restoration
+- `js/50_timeline.js` — Time calculation
 
-本ソフトウェアはテストフライト版として提供されます。商用利用を検討中のため、以下の条件を厳守してください。
+### Assets & IO Layer
+- `js/20_asset_store.js` — Asset registry
+- `js/30_assets_visual.js` — Visual asset handling
+- `js/31_assets_bgm.js` — BGM asset handling
+- `js/70_zip_io.js` — ZIP save / load
+- `js/71_json_io.js` — JSON export
 
-### 権利の帰属
-本ソフトウェアの著作権は製作者に帰属します。著作権は放棄しておりません。
+### Utilities Layer
+- `js/02_sanity_check.js` — Startup validation
+- `js/10_dom.js` — Shared DOM utilities
+- `js/60_keyboard_ime.js` — IME / keyboard safety
+- `js/90_ui_hamburger.js` — UI-only interactions
 
-### 利用条件
-- **個人利用**: 無料で利用可能です。
-- **商用利用**: 営利目的での利用は禁止です。テスト期間中は社内評価のみ許可されます。将来的に有償ライセンスを提供予定です。
-- **再配布の禁止**: 有償・無償を問わず、本ソフトウェアを第三者に再配布、転載、または不特定多数が利用できる状態にすることを禁じます。
+### Documentation
+- `docs/file-roles.md` — Detailed file responsibilities
+- `docs/data-flow.md` — ZIP / JSON data flow
+- `docs/design-notes.md` — UI / CSS design notes
 
-### 免責事項
-本ソフトウェアは現状有姿（As-Is）で提供され、動作保証、不具合の修正、および使用方法のサポート義務を負いません。自己責任においてご利用ください。テスト版のため、データ損失の可能性があります。
+---
+
+## How to Use
+
+### Open the app
+- Open `index.html` directly in a modern browser  
+  (Chrome / Edge / Safari recommended)
+
+### Basic workflow
+1. Add shots using **ADD SHOT**
+2. Set Duration to auto-calculate Start Time
+3. Attach visual and audio assets if needed
+4. Save the project as a ZIP (recommended)
+5. Export JSON if only timeline data is required
+6. Use **EXPORT PDF** for printable planning sheets
+
+---
+
+## Save Formats
+
+### ZIP (Recommended)
+- Includes:
+  - manifest.json
+  - referenced assets (image / video / audio)
+- Best for long-term storage and restoration
+
+### JSON
+- Data only (no media)
+- Useful for lightweight backups or tool integration
+
+---
+
+## Design Principles
+
+- Local-first (no server dependency)
+- Explicit responsibility per file
+- No inline JavaScript handlers in HTML
+- Maintainable CSS using variables
+- Japanese IME-friendly input handling
+
+---
+
+## Status
+
+This project is under active development.
+Internal structure and documentation are continuously refined
+to improve long-term maintainability.
+
+---
 
 ## License
 
-This project is currently released under CC BY-NC 4.0.  
-Commercial use, resale, or redistribution for profit is not permitted without explicit permission.  
-Licensing terms may change in future versions.
+MIT

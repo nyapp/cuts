@@ -1,0 +1,685 @@
+        :root {
+            --border-color: #333;
+            --bg-color: #f9f9f9;
+            --text-color: #222;
+            --muted-text: #666;
+            --panel-bg: #f3f3f3;
+            --btn-bg: #e6e6e6;
+            --btn-bg-strong: #d9d9d9;
+            --btn-border: #333;
+
+            /* Added for maintainability (no visual change) */
+            --page-bg: #fff;
+            --panel-bg-2: #fafafa;
+            --border-soft: #e0e0e0;
+            --border-input: #ccc;
+            --drag-bg: #eef;
+            --drag-border: #66f;
+            --shadow-page: 0 0 0 1px rgba(0,0,0,0.08);
+            --radius-sm: 3px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+
+            /* Added for maintainability (no visual change) - Step 17-B */
+            --no-col-bg: #fafafa;
+            --no-col-bg-hover: #f2f2f2;
+            --handle-muted: #777;
+            --outline-muted: #666;
+            --muted-2: #999;
+                        /* Step 17-C: unify remaining hard-coded colors (no visual change) */
+            --cell-bg: var(--page-bg);
+            --focus-border: var(--muted-2);
+            --placeholder-text: var(--muted-text);
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+        }
+
+        /* A4 Paper Styling */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 12mm 15mm 15mm 15mm;
+            margin: 0 auto;
+            background: var(--page-bg);
+            box-shadow: var(--shadow-page);
+            box-sizing: border-box;
+        }
+
+        /* Project title display (document-style title) */
+        .project-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            margin: 0 0 10px 0;
+            padding: 0;
+            color: var(--text-color);
+        }
+
+        /* Header Info */
+        .header-block {
+            background: var(--panel-bg-2);
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+        }
+        .header-info {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .header-meta {
+            display: flex;
+            gap: 14px;
+            align-items: flex-end;
+            margin-left: auto;
+        }
+        .header-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .header-item label {
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .header-item input {
+            border: none;
+            border-bottom: 1px solid var(--border-input);
+            font-size: 14px;
+            padding: 4px;
+            width: 150px;
+            background: transparent;
+            color: var(--text-color);
+            box-shadow: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .header-item input:focus {
+            outline: none;
+                        border-bottom-color: var(--focus-border);
+        }
+
+        /* Some browsers render date inputs with an opaque inner background; force transparency */
+        .header-item input[type="date"] {
+            background-color: transparent;
+        }
+
+        /* Compact DATE field (metadata feel) */
+        .header-meta .header-item input[type="date"] {
+            width: 120px;
+        }
+
+        /* Neutralize WebKit autofill yellow/white fill so it doesn't look like a "floating" box */
+        .header-item input:-webkit-autofill,
+        .header-item input:-webkit-autofill:hover,
+        .header-item input:-webkit-autofill:focus {
+            -webkit-text-fill-color: var(--text-color);
+            transition: background-color 9999s ease-out 0s;
+            box-shadow: 0 0 0px 1000px rgba(250,250,250,0) inset;
+        }
+        .header-item select {
+            border: none;
+            border-bottom: 1px solid var(--border-input);
+            font-size: 14px;
+            padding: 4px;
+            width: 150px;
+            background: transparent;
+            color: var(--text-color);
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            box-shadow: none;
+            border-radius: 0;
+        }
+
+        .header-item select:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        /* (focus ring rule deleted) */
+
+        /* Production Specs */
+        .header-specs {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .header-specs .header-item input {
+            width: 180px;
+        }
+        .header-specs .header-item select { width: 180px; }
+        .header-specs .header-item label {
+            font-size: 11px;
+        }
+
+        /* Storyboard Grid */
+        .storyboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .storyboard-table th {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 5px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .storyboard-table td {
+            border: 1px solid var(--border-color);
+            vertical-align: top;
+            padding: 5px;
+                        background: var(--cell-bg);
+        }
+
+        /* Vertically center specific columns (No. / Duration / Start Time)
+           NOTE: Do NOT change td display from table-cell (it breaks row height). */
+        .storyboard-table tbody td:nth-child(1),
+        .storyboard-table tbody td:nth-child(4),
+        .storyboard-table tbody td:nth-child(5) {
+            vertical-align: middle;
+        }
+
+        /* No. column: center the number within the full cell height */
+        .storyboard-table tbody td:nth-child(1) .cut-number {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Duration / Start Time: center the small single-line textarea within tall rows */
+        .storyboard-table tbody td:nth-child(4),
+        .storyboard-table tbody td:nth-child(5) {
+            position: relative;
+        }
+
+        /* Caption column: enable absolute centering */
+        .storyboard-table tbody td:nth-child(3) {
+            position: relative;
+        }
+
+        .storyboard-table tbody td:nth-child(4) textarea,
+        .storyboard-table tbody td:nth-child(4) input,
+        .storyboard-table tbody td:nth-child(5) textarea,
+        .storyboard-table tbody td:nth-child(5) input {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100% - 10px);
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            overflow: hidden;
+            font-size: 12px; /* explicit, shared */
+        }
+
+        /* Center caption editor (horizontal + vertical)
+           IMPORTANT: Do not make the contenteditable itself a flex container.
+           Safari/IME caret + composition can behave oddly with flex contenteditables. */
+.storyboard-table tbody td:nth-child(3) .caption-wrap {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.storyboard-table tbody td:nth-child(3) .input-audio {
+    width: 100%;
+    /* Let the element size to its content so the wrapper can center it vertically */
+    height: auto;
+    max-height: 100%;
+    min-height: 1.2em; /* keep an editable target even when empty */
+    box-sizing: border-box;
+    display: block;
+
+    text-align: center;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    direction: ltr;
+    unicode-bidi: plaintext;
+
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    padding: 0;
+    outline: none;
+    overflow: hidden;
+}
+
+
+        /* Column Widths */
+        .col-no { width: 40px; }
+        .col-visual { width: 260px; } 
+        .col-audio { width: auto; }
+        .col-duration { width: 70px; }
+        .col-start { width: 80px; }
+
+        /* Visual Box Areas */
+        .visual-box {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: var(--page-bg);
+            border: 1px dashed var(--border-input);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+        .visual-box.drag-over {
+            background-color: var(--drag-bg);
+            border-color: var(--drag-border);
+        }
+
+        .visual-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            pointer-events: none; /* 画像自体はドラッグさせない */
+        }
+
+        /* File name label shown when an image is set */
+        .visual-box .file-name {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 2px 4px;
+            font-size: 9.5px;
+            line-height: 1.2;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.55);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .visual-box .kind-badge {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.65);
+            border-radius: var(--radius-sm);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Ensure placeholder only shows when truly empty (no img/label) */
+        .visual-box.has-image:empty::after {
+            content: "";
+        }
+        .visual-box:empty::after {
+            content: "Double-click or Drag & Drop";
+            font-size: 11px;
+                    color: var(--placeholder-text);
+            text-align: center;
+            white-space: pre;
+            padding: 8px;
+        }
+
+        .visual-box .clear-btn {
+            display: none;
+        }
+
+        .visual-box.has-image:hover::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+
+        .visual-box.has-image:hover::after {
+            content: "×";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .bgm-box .clear-btn {
+            display: none;
+        }
+
+        .bgm-box.has-image:hover::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+
+        .bgm-box.has-image:hover::after {
+            content: "×";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Header BGM box */
+        .header-bgm {
+            margin-top: 8px;
+            margin-bottom: 6px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .bgm-box {
+            width: 520px;
+            max-width: 100%;
+            height: 34px;
+            border: 1px dashed var(--border-input);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            padding: 0 10px;
+            position: relative;
+            cursor: pointer;
+            overflow: visible;
+            background: transparent;
+            box-sizing: border-box;
+        }
+        .bgm-box.drag-over {
+            background-color: var(--drag-bg);
+            border-color: var(--drag-border);
+        }
+        .bgm-box:empty::after {
+            content: "Double-click or Drag & Drop (Audio)";
+            font-size: 11px;
+                        color: var(--placeholder-text);
+            padding: 2px 0;
+            white-space: normal;
+            line-height: 34px;
+        }
+        .bgm-box .kind-badge {
+            position: static;
+            padding: 2px 6px;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #fff;
+            background: rgba(0,0,0,0.75);
+            border-radius: 3px;
+            pointer-events: none;
+            flex: 0 0 auto;
+        }
+        .bgm-box .file-name {
+            position: static;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.3;
+            color: #333;
+            background: transparent;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: normal;
+            word-break: break-word;
+            pointer-events: none;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .bgm-action {
+            height: 34px;
+            padding: 0 10px;
+            border-radius: 4px;
+            border: 1px solid var(--btn-border);
+            cursor: pointer;
+            background: var(--btn-bg);
+            color: var(--text-color);
+        }
+        .bgm-action.is-add { background: var(--btn-bg); color: var(--text-color); }
+        .bgm-action.is-clear { background: var(--btn-bg-strong); color: var(--text-color); }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            border: none;
+            background: transparent;
+            resize: none;
+            font-size: 12px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            outline: none;
+        }
+        input.input-duration,
+        input.input-start {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 12px;
+            padding: 0;
+            box-sizing: border-box;
+            text-align: center;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+
+            /* Prevent visible clipping in narrow cells */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+
+        input.input-duration:focus,
+        input.input-start:focus {
+            outline: none;
+        }
+
+        .cut-number {
+            text-align: center;
+            font-weight: 600;
+        }
+        /* Drag handle for row reorder */
+        .cut-number {
+            cursor: grab;
+            user-select: none;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #222;
+        }
+        /* No. column: subtle handle feel */
+        .storyboard-table tbody td:nth-child(1) {
+            background: var(--no-col-bg);
+        }
+        .storyboard-table tbody td:nth-child(1):hover {
+            background: var(--no-col-bg-hover);
+        }
+        .storyboard-table tbody td:nth-child(1) .cut-number::before {
+            content: "≡";
+            display: inline-block;
+            margin-right: 6px;
+            color: var(--handle-muted);
+            font-weight: 400;
+        }
+        /* Keep the number readable */
+        .storyboard-table tbody td:nth-child(1) .cut-number {
+            gap: 0;
+        }
+        tr.dragging {
+            opacity: 0.5;
+        }
+        tr.drag-over {
+            outline: 2px dashed var(--outline-muted);
+        }
+
+        /* Buttons & Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 auto 10px auto;
+            width: 210mm;
+            max-width: 210mm;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .controls-left {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .controls-right {
+        margin-left: auto;
+    }
+    .controls button {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+    }
+    button {
+        padding: 6px 10px;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: 4px;
+        background: var(--btn-bg);
+        color: var(--text-color);
+        border: 1px solid var(--btn-border);
+    }
+    button:active { opacity: 0.85; }
+    .btn-print { background-color: var(--btn-bg-strong); color: var(--text-color); }
+    .btn-add { background-color: var(--btn-bg); color: var(--text-color); }
+    .btn-save { background-color: var(--btn-bg); color: var(--text-color); }
+    .btn-load { background-color: var(--btn-bg); color: var(--text-color); }
+
+    /* Transparent primary control buttons (text-only) */
+    .controls-left button {
+        background: transparent;
+        border: none;
+        padding: 6px 6px;
+    }
+
+    .controls-left button:hover {
+        text-decoration: underline;
+    }
+
+    .controls-left button:active {
+        opacity: 0.7;
+    }
+
+        .controls-separator {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            color: var(--muted-2);
+            padding: 0 2px;
+            line-height: 1;
+            user-select: none;
+        }
+
+/* Hamburger menu (right side) */
+.hamburger-menu {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+}
+
+.hamburger-menu > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 6px 6px;
+  border-radius: 4px;
+  background: transparent;
+}
+.hamburger-menu > summary:active {
+  opacity: 0.7;
+}
+.hamburger-menu > summary:hover {
+  text-decoration: underline;
+}
+
+.hamburger-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hamburger-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 190px;
+  background: var(--page-bg);
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  padding: 6px;
+  z-index: 50;
+}
+
+.hamburger-panel .menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+}
+
+.hamburger-panel .menu-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.hamburger-panel .menu-item:active {
+  opacity: 0.75;
+}
+/* Secondary (low priority) menu item */
+.hamburger-panel .menu-item.is-secondary {
+  color: var(--outline-muted);
+}
+
+.hamburger-panel .menu-note {
+  font-size: 10px;
+  color: var(--muted-2);
+  margin-top: 2px;
+}
+        /* Hidden file input for click uploads */
+        #hidden-image-input { display: none; }
+
