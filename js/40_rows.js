@@ -16,6 +16,7 @@
 // ----------------------------
 
 let draggingRow = null;
+let dropIndicatorRow = null;
 
 function renumberCuts() {
   const rows = document.querySelectorAll('#storyboard-body tr');
@@ -291,10 +292,15 @@ function addRow(data = null) {
   // ----------------------------
   // Drag & Drop reorder
   // ----------------------------
-  // Drag handle is the ⋯ button (long-press enables draggable)
-  const dragHandle = menuBtn || newRow.querySelector('td[draggable="true"]');
+  // Google Sheets-like: drag from the No. cell (except ⋯ button)
+  const dragCell = newRow.querySelector('td.cell-handle');
 
-  dragHandle.addEventListener('dragstart', (e) => {
+  dragCell.addEventListener('dragstart', (e) => {
+    // Don't start a row drag when user is clicking the ⋯ menu button
+    if (e.target && e.target.closest && e.target.closest('.btn-row-menu')) {
+      e.preventDefault();
+      return;
+    }
     draggingRow = newRow;
     newRow.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
@@ -302,27 +308,38 @@ function addRow(data = null) {
     suppressMenuClickUntil = Date.now() + 600;
   });
 
-  dragHandle.addEventListener('dragend', () => {
+  dragCell.addEventListener('dragend', () => {
     draggingRow = null;
     newRow.classList.remove('dragging');
     document
       .querySelectorAll('#storyboard-body tr')
-      .forEach(r => r.classList.remove('drag-over'));
+      .forEach(r => r.classList.remove('drag-over', 'drop-before', 'drop-after'));
+    dropIndicatorRow = null;
     renumberCuts();
-    if (menuBtn) {
-      // Reset to non-draggable after finishing the move
-      menuBtn.setAttribute('draggable', 'false');
-    }
   });
 
   newRow.addEventListener('dragover', (e) => {
     e.preventDefault();
     if (!draggingRow || draggingRow === newRow) return;
+
+    // Clear previous indicator
+    if (dropIndicatorRow && dropIndicatorRow !== newRow) {
+      dropIndicatorRow.classList.remove('drag-over', 'drop-before', 'drop-after');
+    }
+
+    // Decide whether drop inserts before or after this row
+    const rect = newRow.getBoundingClientRect();
+    const isAfter = e.clientY > rect.top + rect.height / 2;
+
     newRow.classList.add('drag-over');
+    newRow.classList.toggle('drop-after', isAfter);
+    newRow.classList.toggle('drop-before', !isAfter);
+    dropIndicatorRow = newRow;
   });
 
   newRow.addEventListener('dragleave', () => {
-    newRow.classList.remove('drag-over');
+    newRow.classList.remove('drag-over', 'drop-before', 'drop-after');
+    if (dropIndicatorRow === newRow) dropIndicatorRow = null;
   });
 
   newRow.addEventListener('drop', (e) => {
@@ -333,11 +350,18 @@ function addRow(data = null) {
     const dragIndex = rows.indexOf(draggingRow);
     const dropIndex = rows.indexOf(newRow);
 
-    if (dragIndex < dropIndex) {
+    const rect = newRow.getBoundingClientRect();
+    const isAfter = e.clientY > rect.top + rect.height / 2;
+
+    if (isAfter) {
       tbody.insertBefore(draggingRow, newRow.nextSibling);
     } else {
       tbody.insertBefore(draggingRow, newRow);
     }
+
+    // Clear indicators immediately after drop
+    newRow.classList.remove('drag-over', 'drop-before', 'drop-after');
+    if (dropIndicatorRow === newRow) dropIndicatorRow = null;
   });
 
   // ----------------------------

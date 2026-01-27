@@ -594,7 +594,14 @@
             opacity: 0.5;
         }
         tr.drag-over {
-            outline: 2px dashed var(--outline-muted);
+            outline: none;
+        }
+        /* Drop indicator line (between rows) without affecting table layout */
+        tr.drag-over.drop-before td {
+            box-shadow: inset 0 2px 0 0 var(--outline-muted);
+        }
+        tr.drag-over.drop-after td {
+            box-shadow: inset 0 -2px 0 0 var(--outline-muted);
         }
 
         /* Buttons & Controls */
