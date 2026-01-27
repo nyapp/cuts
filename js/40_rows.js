@@ -14,6 +14,7 @@
 // ----------------------------
 // Row reorder helpers
 // ----------------------------
+
 let draggingRow = null;
 
 function renumberCuts() {
@@ -26,6 +27,84 @@ function renumberCuts() {
   if (typeof recalcStartTimes === 'function') {
     recalcStartTimes();
   }
+}
+
+// ----------------------------
+// Row actions menu (shared)
+// ----------------------------
+let rowMenuEl = null;
+let rowMenuTargetRow = null;
+
+function ensureRowMenu() {
+  if (rowMenuEl) return rowMenuEl;
+
+  const menu = document.createElement('div');
+  menu.className = 'row-menu';
+  menu.style.display = 'none';
+
+  // Minimal menu: Delete row
+  menu.innerHTML = `
+    <button type="button" class="row-menu-item" data-action="delete">Delete row</button>
+  `;
+
+  document.body.appendChild(menu);
+  rowMenuEl = menu;
+
+  // Click outside to close
+  document.addEventListener('mousedown', (e) => {
+    if (!rowMenuEl || rowMenuEl.style.display === 'none') return;
+    const isInsideMenu = rowMenuEl.contains(e.target);
+    const isMenuButton = e.target && e.target.closest && e.target.closest('.btn-row-menu');
+    if (!isInsideMenu && !isMenuButton) {
+      closeRowMenu();
+    }
+  });
+
+  // Esc to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeRowMenu();
+  });
+
+  // Menu item actions
+  rowMenuEl.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
+    if (!btn) return;
+
+    const action = btn.getAttribute('data-action');
+    const row = rowMenuTargetRow;
+
+    if (action === 'delete' && row) {
+      const ok = e.shiftKey ? true : window.confirm('Delete this row?');
+      if (!ok) return;
+
+      if (draggingRow === row) draggingRow = null;
+      row.remove();
+      renumberCuts();
+      closeRowMenu();
+      return;
+    }
+
+    closeRowMenu();
+  });
+
+  return rowMenuEl;
+}
+
+function openRowMenu(anchorEl, rowEl) {
+  const menu = ensureRowMenu();
+  rowMenuTargetRow = rowEl;
+
+  const r = anchorEl.getBoundingClientRect();
+  // Place menu under the button, aligned to its left edge
+  menu.style.left = `${Math.round(r.left)}px`;
+  menu.style.top = `${Math.round(r.bottom + 6)}px`;
+  menu.style.display = 'block';
+}
+
+function closeRowMenu() {
+  if (!rowMenuEl) return;
+  rowMenuEl.style.display = 'none';
+  rowMenuTargetRow = null;
 }
 
 // ----------------------------
@@ -55,8 +134,11 @@ function addRow(data = null) {
 
   // ---- DOM creation ----
   newRow.innerHTML = `
-    <td draggable="true">
-      <div class="cut-number">${rowCount}</div>
+    <td draggable="true" class="cell-handle">
+      <div class="handle-wrap">
+        <div class="cut-number">${rowCount}</div>
+        <button type="button" class="btn-row-menu" title="Row actions" aria-label="Row actions">⋯</button>
+      </div>
     </td>
     <td>
       <div class="visual-box">${visualHtml}</div>
@@ -82,6 +164,57 @@ function addRow(data = null) {
   `;
 
   tbody.appendChild(newRow);
+
+  // ----------------------------
+  // Row actions menu (⋯)
+  // ----------------------------
+  const menuBtn = newRow.querySelector('.btn-row-menu');
+  let suppressMenuClickUntil = 0;
+  if (menuBtn) {
+    // Merge: short click = menu, long-press = drag handle
+    menuBtn.setAttribute('draggable', 'false');
+
+    // Long-press enables drag on the ⋯ button
+    let pressTimer = null;
+    const LONG_PRESS_MS = 350;
+    const clearPress = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    menuBtn.addEventListener('pointerdown', (e) => {
+      // Primary pointer only
+      if (e.button !== 0) return;
+      clearPress();
+
+      // If user holds, enable dragging on this button
+      pressTimer = setTimeout(() => {
+        menuBtn.setAttribute('draggable', 'true');
+      }, LONG_PRESS_MS);
+    });
+
+    menuBtn.addEventListener('pointerup', () => {
+      clearPress();
+      // If drag didn't start, keep it non-draggable for normal clicks
+      if (Date.now() >= suppressMenuClickUntil) {
+        menuBtn.setAttribute('draggable', 'false');
+      }
+    });
+
+    menuBtn.addEventListener('pointercancel', () => {
+      clearPress();
+      menuBtn.setAttribute('draggable', 'false');
+    });
+
+    menuBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (Date.now() < suppressMenuClickUntil) return;
+      openRowMenu(menuBtn, newRow);
+    });
+  }
 
   // ----------------------------
   // Caption restore
@@ -158,21 +291,28 @@ function addRow(data = null) {
   // ----------------------------
   // Drag & Drop reorder
   // ----------------------------
-  const dragCell = newRow.querySelector('td[draggable="true"]');
+  // Drag handle is the ⋯ button (long-press enables draggable)
+  const dragHandle = menuBtn || newRow.querySelector('td[draggable="true"]');
 
-  dragCell.addEventListener('dragstart', (e) => {
+  dragHandle.addEventListener('dragstart', (e) => {
     draggingRow = newRow;
     newRow.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
+    // Prevent the click-to-open-menu right after drag
+    suppressMenuClickUntil = Date.now() + 600;
   });
 
-  dragCell.addEventListener('dragend', () => {
+  dragHandle.addEventListener('dragend', () => {
     draggingRow = null;
     newRow.classList.remove('dragging');
     document
       .querySelectorAll('#storyboard-body tr')
       .forEach(r => r.classList.remove('drag-over'));
     renumberCuts();
+    if (menuBtn) {
+      // Reset to non-draggable after finishing the move
+      menuBtn.setAttribute('draggable', 'false');
+    }
   });
 
   newRow.addEventListener('dragover', (e) => {

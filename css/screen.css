@@ -526,15 +526,65 @@
         .storyboard-table tbody td:nth-child(1) {
             background: var(--no-col-bg);
         }
-        .storyboard-table tbody td:nth-child(1):hover {
+        .storyboard-table tbody tr:hover td {
             background: var(--no-col-bg-hover);
         }
         .storyboard-table tbody td:nth-child(1) .cut-number::before {
-            content: "≡";
+            content: "";
             display: inline-block;
             margin-right: 6px;
             color: var(--handle-muted);
             font-weight: 400;
+        }
+        /* No. column: keep number centered, move row-menu button */
+        .storyboard-table tbody td:nth-child(1) .handle-wrap {
+            position: relative;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .storyboard-table tbody td:nth-child(1) .btn-row-menu {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            padding: 2px 6px;
+            line-height: 1;
+            font-size: 14px;
+            background: transparent;
+            border: none;
+            color: var(--muted-text);
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Show ⋯ only on hover/focus (desktop) */
+        .storyboard-table tbody tr:hover td:nth-child(1) .btn-row-menu,
+        .storyboard-table tbody td:nth-child(1):hover .btn-row-menu,
+        .storyboard-table tbody td:nth-child(1):focus-within .btn-row-menu,
+        .storyboard-table tbody td:nth-child(1) .btn-row-menu:focus-visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        /* Hide the number while hovering/focusing (show only ⋯) */
+        .storyboard-table tbody tr:hover td:nth-child(1) .cut-number,
+        .storyboard-table tbody td:nth-child(1):hover .cut-number,
+        .storyboard-table tbody td:nth-child(1):focus-within .cut-number {
+            opacity: 0;
+        }
+        /* Touch devices have no hover: keep ⋯ accessible */
+        @media (hover: none) {
+            .storyboard-table tbody td:nth-child(1) .btn-row-menu {
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
+        .storyboard-table tbody td:nth-child(1) .btn-row-menu:hover {
+            color: var(--text-color);
+            text-decoration: underline;
+        }
+        .storyboard-table tbody td:nth-child(1) .btn-row-menu:active {
+            opacity: 0.7;
         }
         /* Keep the number readable */
         .storyboard-table tbody td:nth-child(1) .cut-number {
