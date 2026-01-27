@@ -25,7 +25,7 @@ function applyInitialDefaultsIfEmpty() {
 
   // Standard defaults
   setIfEmpty('h-format', '1920x1080 / 16:9');
-  setIfEmpty('h-fps', '29.97');
+  setIfEmpty('h-fps', '30');
   setIfEmpty('h-delivery', 'H.264 / mp4 / AAC');
   setIfEmpty('h-loudness', '-14 LUFS / -1 dBTP');
 
