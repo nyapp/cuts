@@ -73,6 +73,7 @@ function clearVisualBox(box) {
   delete box.dataset.kind;
   delete box.dataset.assetId;
   delete box.dataset.assetName;
+  delete box.dataset.sourceDuration;
 
   // Also remove attributes (kebab-case) to avoid stale values being serialized elsewhere
   box.removeAttribute("data-filename");
@@ -80,6 +81,7 @@ function clearVisualBox(box) {
   box.removeAttribute("data-kind");
   box.removeAttribute("data-asset-id");
   box.removeAttribute("data-asset-name");
+  box.removeAttribute("data-source-duration");
 }
 
 // 画像/動画ファイルを読み込んでボックスに表示（ファイル名も表示）
@@ -101,6 +103,7 @@ function renderImageToBox(file, box) {
 
   const fileName =
     file.name && file.name.trim() ? file.name.trim() : "clipboard-file";
+
 
   box.dataset.filename = fileName;
   box.dataset.filetype = file.type;
@@ -143,10 +146,11 @@ function renderImageToBox(file, box) {
     video.style.width = "1px";
     video.style.height = "1px";
 
-    video.preload = "auto";
+    video.preload = "metadata"; // Safari: explicitly request metadata
     video.muted = true;
     video.playsInline = true;
     video.controls = false;
+    // Don't set crossOrigin for local files - it can cause CORS errors
     video.src = url;
 
     document.body.appendChild(video);
@@ -251,8 +255,13 @@ function renderImageToBox(file, box) {
 
         captured = true;
         box.classList.add("has-image");
+        
+        // Get duration if available
+        const duration = box.dataset.sourceDuration || (video.duration && video.duration > 0 && !isNaN(video.duration) ? String(Math.round(video.duration * 100) / 100) : null);
+        const durationDisplay = duration ? ` ${duration}s` : '';
+        
         box.innerHTML = `
-          <div class="kind-badge">VID</div>
+          <div class="kind-badge">VID${durationDisplay}</div>
           <img src="${thumbDataUrl}" alt="${safeName}">
           <div class="file-name" title="${safeName}">${safeName}</div>
         `;
@@ -263,6 +272,64 @@ function renderImageToBox(file, box) {
         return false;
       }
     }
+
+    // Helper: Capture the source (original) video duration.
+    // IMPORTANT: This should NOT overwrite the UI "use duration" if the user already set it.
+    // We store the source duration on the visual box as `data-source-duration`.
+    const updateDurationField = () => {
+      const d = video.duration;
+      
+      // More lenient validation
+      if (!d || d <= 0 || isNaN(d) || !isFinite(d)) {
+        return false;
+      }
+
+      // Format duration to 2 decimal places (e.g., 11.03)
+      const formattedDuration = Math.round(d * 100) / 100;
+      const durationStr = String(formattedDuration);
+
+      // Store as source duration on the box (separate concept from use-duration input)
+      // Always set this, even if row/durationInput is not found
+      // Use both dataset and setAttribute for maximum compatibility
+      try {
+        box.dataset.sourceDuration = durationStr;
+        box.setAttribute("data-source-duration", durationStr);
+        // Force a reflow to ensure attribute is set
+        void box.offsetHeight;
+      } catch (e) {
+        // Fallback if dataset fails
+        box.setAttribute("data-source-duration", durationStr);
+      }
+      
+      // Update VID badge if it exists to show duration
+      const vidBadge = box.querySelector('.kind-badge');
+      if (vidBadge && vidBadge.textContent.trim().startsWith('VID')) {
+        vidBadge.textContent = `VID ${durationStr}s`;
+      }
+
+      // Auto-fill behavior: fill when input is empty or has default value (5)
+      // Use duration - 2 seconds for the Duration field
+      const row = box.closest("tr");
+      if (row) {
+        const durationInput = row.querySelector(".input-duration");
+        if (durationInput) {
+          const currentValue = String(durationInput.value || "").trim();
+          // Fill if empty or has default value (5)
+          if (!currentValue || currentValue === "5") {
+            // Calculate duration - 2 seconds, but ensure it's not negative
+            const durationForInput = Math.max(0, formattedDuration - 2);
+            const durationForInputStr = String(Math.round(durationForInput * 100) / 100);
+            durationInput.value = durationForInputStr;
+            durationInput.dispatchEvent(new Event("input", { bubbles: true }));
+            if (typeof recalcStartTimes === "function") {
+              recalcStartTimes();
+            }
+          }
+        }
+      }
+      
+      return true;
+    };
 
     const tryGenerate = async () => {
       if (captured) return;
@@ -294,20 +361,122 @@ function renderImageToBox(file, box) {
       }
     };
 
-    video.addEventListener(
-      "loadedmetadata",
-      () => {
-        tryGenerate();
-      },
-      { once: true }
-    );
-    video.addEventListener(
-      "loadeddata",
-      () => {
-        tryGenerate();
-      },
-      { once: true }
-    );
+    // Listen for duration change (most reliable for getting duration)
+    let durationSet = false;
+    const trySetDuration = () => {
+      if (durationSet) return true;
+      const d = video.duration;
+      // More lenient check: allow any positive number, even if not perfectly finite
+      if (d && d > 0 && !isNaN(d) && isFinite(d)) {
+        const success = updateDurationField();
+        if (success) {
+          durationSet = true;
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Use multiple events and polling to ensure we get the duration
+    const checkDuration = () => {
+      if (durationSet) return true;
+      // Check if video has metadata loaded
+      if (video.readyState >= 1) {
+        return trySetDuration();
+      }
+      return false;
+    };
+
+    // Set up event listeners
+    video.addEventListener("durationchange", () => {
+      trySetDuration();
+    }, { once: false });
+    
+    video.addEventListener("loadedmetadata", () => {
+      trySetDuration();
+      tryGenerate();
+    }, { once: true });
+    
+    video.addEventListener("loadeddata", () => {
+      trySetDuration();
+      tryGenerate();
+    }, { once: true });
+    
+    video.addEventListener("canplay", () => {
+      trySetDuration();
+    }, { once: true });
+    
+    video.addEventListener("canplaythrough", () => {
+      trySetDuration();
+    }, { once: true });
+    
+    // Aggressive polling fallback: check every 50ms for up to 10 seconds
+    // Safari needs more time to load metadata
+    let pollCount = 0;
+    const maxPolls = 200; // 10 seconds (Safari needs more time)
+    const pollInterval = setInterval(() => {
+      pollCount++;
+      const success = checkDuration();
+      if (success || pollCount >= maxPolls) {
+        clearInterval(pollInterval);
+        if (!success && pollCount >= maxPolls) {
+          // Final attempt after polling
+          trySetDuration();
+        }
+      }
+    }, 50);
+    
+    // Safari-specific workaround: Force metadata loading by playing briefly
+    const safariWorkaround = () => {
+      if (durationSet) return;
+      try {
+        if (video.readyState >= 1) {
+          // Try to get duration first
+          if (trySetDuration()) return;
+          
+          // Safari: Sometimes needs a brief play/seek to fully load metadata
+          if (video.readyState < 3) {
+            // Try seeking to a small value to trigger metadata load
+            const savedTime = video.currentTime;
+            video.currentTime = 0.01;
+            
+            // Also try playing briefly (muted, so no audio)
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+              playPromise.then(() => {
+                // Pause immediately after starting
+                video.pause();
+                video.currentTime = savedTime;
+                // Check duration after play
+                setTimeout(() => {
+                  if (!durationSet) trySetDuration();
+                }, 100);
+              }).catch(() => {
+                // If play fails, just try seeking
+                video.currentTime = savedTime;
+                setTimeout(() => {
+                  if (!durationSet) trySetDuration();
+                }, 100);
+              });
+            } else {
+              // Fallback if play() doesn't return a promise
+              setTimeout(() => {
+                video.currentTime = savedTime;
+                if (!durationSet) trySetDuration();
+              }, 150);
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    // Safari workaround: try multiple times with increasing delays
+    setTimeout(safariWorkaround, 300);
+    setTimeout(safariWorkaround, 1000);
+    setTimeout(safariWorkaround, 2500);
+    setTimeout(safariWorkaround, 5000);
     video.addEventListener(
       "error",
       () => {
@@ -320,9 +489,27 @@ function renderImageToBox(file, box) {
       { once: true }
     );
 
+    // Additional Safari-specific event listener (before load)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (isSafari) {
+      // Safari: Add multiple event listeners to catch duration
+      const safariMetadataHandler = () => {
+        setTimeout(() => {
+          if (!durationSet && video.duration && video.duration > 0 && !isNaN(video.duration)) {
+            trySetDuration();
+          }
+        }, 100);
+      };
+      video.addEventListener('loadedmetadata', safariMetadataHandler, { once: false });
+      video.addEventListener('durationchange', safariMetadataHandler, { once: false });
+      video.addEventListener('canplay', safariMetadataHandler, { once: false });
+    }
+    
     try {
       video.load();
-    } catch (_) {}
+    } catch (err) {
+      // Ignore load errors
+    }
 
     setTimeout(() => {
       if (!captured) tryGenerate();
