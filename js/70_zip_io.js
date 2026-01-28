@@ -104,8 +104,15 @@ async function saveProjectZip() {
     const zip = new JSZip();
     zip.file("manifest.json", JSON.stringify(manifest, null, 2));
 
+    // Explicitly create folders and verify they exist
     const assetsFolder = zip.folder("assets");
     const thumbsFolder = zip.folder("thumbs");
+    
+    if (!assetsFolder || !thumbsFolder) {
+      console.error("Failed to create folders in ZIP");
+      alert("Failed to create folder structure in ZIP.");
+      return;
+    }
 
     // Add original asset files that were selected during this session
     const usedAssetIds = new Set();
@@ -207,7 +214,104 @@ async function loadProjectZip(input) {
       if (document.getElementById("h-platform")) document.getElementById("h-platform").value = h.platform || "";
     }
 
-    // --- Restore BGM ---
+    // --- Load assets into assetStore (as File objects) ---
+    // Note: Load assets first so BGM asset is available when restoring BGM
+    const assetFiles = {};
+    // Get all files in the assets folder
+    const assetEntries = [];
+    if (zip.files) {
+      for (const path in zip.files) {
+        if (path.startsWith("assets/") && !path.endsWith("/") && path !== "assets/") {
+          assetEntries.push(path);
+        }
+      }
+    }
+
+    for (const fullPath of assetEntries) {
+      const entry = zip.file(fullPath);
+      if (!entry) continue;
+
+      const blob = await entry.async("blob");
+      // Extract relative path from "assets/filename"
+      const rel = fullPath.replace(/^assets\//, "");
+      // Fix regex: \d should match digits (e.g., "v0001", "m0001")
+      // Pattern: prefix (v or m) + 4 digits + underscore + filename
+      const m = String(rel).match(/^([a-zA-Z]+\d{4})_(.+)$/);
+      const assetId = m ? m[1] : "";
+      const name = m ? m[2] : rel;
+
+      // If regex didn't match, log warning but still try to process the file
+      if (!assetId) {
+        console.warn(`Asset file "${rel}" doesn't match expected pattern (prefix + 4 digits + underscore + filename). Skipping.`);
+        continue;
+      }
+
+      const lower = name.toLowerCase();
+      let mime = "";
+      // Image types
+      if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) mime = "image/jpeg";
+      else if (lower.endsWith(".png")) mime = "image/png";
+      else if (lower.endsWith(".webp")) mime = "image/webp";
+      else if (lower.endsWith(".gif")) mime = "image/gif";
+      // Video types
+      else if (lower.endsWith(".mp4")) mime = "video/mp4";
+      else if (lower.endsWith(".mov")) mime = "video/quicktime";
+      else if (lower.endsWith(".m4v")) mime = "video/x-m4v";
+      // Audio types
+      else if (lower.endsWith(".mp3")) mime = "audio/mpeg";
+      else if (lower.endsWith(".wav")) mime = "audio/wav";
+      else if (lower.endsWith(".m4a")) mime = "audio/mp4";
+      else if (lower.endsWith(".aac")) mime = "audio/aac";
+
+      const f = new File([blob], name, { type: mime || blob.type || "" });
+      // Register all assets (images, videos, audio/BGM) in assetStore
+      assetFiles[assetId] = f;
+      registerAssetWithId(assetId, f);
+    }
+
+    // --- Load thumbs as data URLs (robust) ---
+    // We store thumbs in ZIP as `thumbs/<assetId>.jpg`.
+    // Using base64 avoids occasional blank renders that can happen with blob->FileReader in some browsers.
+    const thumbsMap = {};
+    // Get all files in the thumbs folder
+    const thumbEntries = [];
+    if (zip.files) {
+      for (const path in zip.files) {
+        if (path.startsWith("thumbs/") && !path.endsWith("/") && path !== "thumbs/") {
+          thumbEntries.push(path);
+        }
+      }
+    }
+
+    for (const fullPath of thumbEntries) {
+      const entry = zip.file(fullPath);
+      if (!entry) continue;
+      
+      const rel = fullPath.replace(/^thumbs\//, "");
+
+      const assetId = String(rel).replace(/\.[^.]+$/, '');
+      if (!assetId) continue;
+
+      const ext = String(rel).toLowerCase().split('.').pop() || 'jpg';
+      const mime = ext === 'png' ? 'image/png'
+        : ext === 'webp' ? 'image/webp'
+        : ext === 'gif' ? 'image/gif'
+        : 'image/jpeg';
+
+      try {
+        const b64 = await entry.async('base64');
+        if (b64) thumbsMap[assetId] = `data:${mime};base64,${b64}`;
+      } catch (e) {
+        // Fallback: blob -> dataURL
+        try {
+          const blob = await entry.async('blob');
+          const dataUrl = await blobToDataUrl(blob);
+          if (dataUrl) thumbsMap[assetId] = dataUrl;
+        } catch (_) {}
+      }
+    }
+
+    // --- Restore BGM (after assets are loaded) ---
     const bgmBox = document.getElementById("bgm-box");
     if (bgmBox) {
       if (manifest && manifest.bgm && manifest.bgm.assetId) {
@@ -228,89 +332,20 @@ async function loadProjectZip(input) {
           <div class="kind-badge">BGM</div>
           <div class="file-name" title="${safeName}">${safeName}</div>
         `;
+        // Ensure BGM asset is registered in assetStore (should already be loaded above)
+        if (assetId) {
+          if (assetFiles[assetId]) {
+            // Asset was loaded from ZIP, ensure it's registered
+            registerAssetWithId(assetId, assetFiles[assetId]);
+          } else {
+            console.warn(`BGM asset "${assetId}" not found in loaded assets. Expected file: ${b.file}`);
+          }
+        }
       } else {
         clearBgm();
       }
       updateBgmActionButton();
     }
-
-    // --- Load assets into assetStore (as File objects) ---
-    const assetFiles = {};
-    const assetsFolder = zip.folder("assets");
-    if (assetsFolder) {
-      const assetNames = [];
-      assetsFolder.forEach((relativePath) => {
-        if (relativePath && !relativePath.endsWith("/")) assetNames.push(relativePath);
-      });
-
-      for (const rel of assetNames) {
-        const entry = zip.file(`assets/${rel}`);
-        if (!entry) continue;
-
-        const blob = await entry.async("blob");
-        const m = String(rel).match(/^([a-zA-Z]+\\d{4})_(.+)$/);
-        const assetId = m ? m[1] : "";
-        const name = m ? m[2] : rel;
-
-        const lower = name.toLowerCase();
-        let mime = "";
-        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) mime = "image/jpeg";
-        else if (lower.endsWith(".png")) mime = "image/png";
-        else if (lower.endsWith(".webp")) mime = "image/webp";
-        else if (lower.endsWith(".gif")) mime = "image/gif";
-        else if (lower.endsWith(".mp4")) mime = "video/mp4";
-        else if (lower.endsWith(".mov")) mime = "video/quicktime";
-        else if (lower.endsWith(".m4v")) mime = "video/x-m4v";
-        else if (lower.endsWith(".mp3")) mime = "audio/mpeg";
-        else if (lower.endsWith(".wav")) mime = "audio/wav";
-        else if (lower.endsWith(".m4a")) mime = "audio/mp4";
-        else if (lower.endsWith(".aac")) mime = "audio/aac";
-
-        const f = new File([blob], name, { type: mime || blob.type || "" });
-        if (assetId) {
-          assetFiles[assetId] = f;
-          registerAssetWithId(assetId, f);
-        }
-      }
-    }
-
-// --- Load thumbs as data URLs (robust) ---
-// We store thumbs in ZIP as `thumbs/<assetId>.jpg`.
-// Using base64 avoids occasional blank renders that can happen with blob->FileReader in some browsers.
-const thumbsMap = {};
-const thumbsFolder = zip.folder('thumbs');
-if (thumbsFolder) {
-  const thumbNames = [];
-  thumbsFolder.forEach((relativePath) => {
-    if (relativePath && !relativePath.endsWith('/')) thumbNames.push(relativePath);
-  });
-
-  for (const rel of thumbNames) {
-    const entry = zip.file(`thumbs/${rel}`);
-    if (!entry) continue;
-
-    const assetId = String(rel).replace(/\.[^.]+$/, '');
-    if (!assetId) continue;
-
-    const ext = String(rel).toLowerCase().split('.').pop() || 'jpg';
-    const mime = ext === 'png' ? 'image/png'
-      : ext === 'webp' ? 'image/webp'
-      : ext === 'gif' ? 'image/gif'
-      : 'image/jpeg';
-
-    try {
-      const b64 = await entry.async('base64');
-      if (b64) thumbsMap[assetId] = `data:${mime};base64,${b64}`;
-    } catch (e) {
-      // Fallback: blob -> dataURL
-      try {
-        const blob = await entry.async('blob');
-        const dataUrl = await blobToDataUrl(blob);
-        if (dataUrl) thumbsMap[assetId] = dataUrl;
-      } catch (_) {}
-    }
-  }
-}
 
     // --- Rebuild rows from manifest ---
     const tbody = document.getElementById("storyboard-body");
