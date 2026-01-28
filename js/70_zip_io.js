@@ -212,10 +212,16 @@ async function loadProjectZip(input) {
     if (bgmBox) {
       if (manifest && manifest.bgm && manifest.bgm.assetId) {
         const b = manifest.bgm;
-        const safeName = escapeHtml((b.file || "").split("/").pop() || "bgm");
-        bgmBox.dataset.assetId = b.assetId || "";
-        bgmBox.dataset.assetName = (b.file || "").split("/").pop() || "";
-        bgmBox.dataset.filename = bgmBox.dataset.assetName || "";
+        const assetId = b.assetId || "";
+        // Remove assetId prefix from filename (same as visual assets)
+        const fileName = (b.file || "")
+          .split("/")
+          .pop()
+          .replace(new RegExp(`^${assetId}_`), "") || "";
+        const safeName = escapeHtml(fileName || "bgm");
+        bgmBox.dataset.assetId = assetId;
+        bgmBox.dataset.assetName = fileName;
+        bgmBox.dataset.filename = fileName;
         bgmBox.dataset.filetype = b.filetype || "";
         bgmBox.dataset.kind = "audio";
         bgmBox.innerHTML = `
