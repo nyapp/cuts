@@ -181,11 +181,10 @@
                         background: var(--cell-bg);
         }
 
-        /* Vertically center specific columns (No. / Duration / Start Time)
+        /* Vertically center specific columns (No. / Duration)
            NOTE: Do NOT change td display from table-cell (it breaks row height). */
         .storyboard-table tbody td:nth-child(1),
-        .storyboard-table tbody td:nth-child(4),
-        .storyboard-table tbody td:nth-child(5) {
+        .storyboard-table tbody td:nth-child(4) {
             vertical-align: middle;
         }
 
@@ -197,9 +196,8 @@
             justify-content: center;
         }
 
-        /* Duration / Start Time: center the small single-line textarea within tall rows */
-        .storyboard-table tbody td:nth-child(4),
-        .storyboard-table tbody td:nth-child(5) {
+        /* Duration: center the small single-line input within tall rows */
+        .storyboard-table tbody td:nth-child(4) {
             position: relative;
         }
 
@@ -208,10 +206,7 @@
             position: relative;
         }
 
-        .storyboard-table tbody td:nth-child(4) textarea,
-        .storyboard-table tbody td:nth-child(4) input,
-        .storyboard-table tbody td:nth-child(5) textarea,
-        .storyboard-table tbody td:nth-child(5) input {
+        .storyboard-table tbody td:nth-child(4) input {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -221,7 +216,7 @@
             line-height: 28px;
             text-align: center;
             overflow: hidden;
-            font-size: 12px; /* explicit, shared */
+            font-size: 12px; /* explicit */
         }
 
         /* Center caption editor (horizontal + vertical)
@@ -264,12 +259,11 @@
 }
 
 
-        /* Column Widths */
+        /* Column Widths (Start Time column removed; extra space goes to col-audio) */
         .col-no { width: 40px; }
         .col-visual { width: 260px; } 
         .col-audio { width: auto; }
         .col-duration { width: 70px; }
-        .col-start { width: 80px; }
 
         /* Visual Box Areas */
         .visual-box {
@@ -482,8 +476,7 @@
         textarea:focus {
             outline: none;
         }
-        input.input-duration,
-        input.input-start {
+        input.input-duration {
             width: 100%;
             border: none;
             background: transparent;
@@ -501,9 +494,7 @@
             text-overflow: ellipsis;
         }
 
-
-        input.input-duration:focus,
-        input.input-start:focus {
+        input.input-duration:focus {
             outline: none;
         }
 

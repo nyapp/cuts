@@ -127,9 +127,6 @@ function addRow(data = null) {
   const DEFAULT_DURATION = '5'; // seconds (used when no data is provided)
   const durationText = data ? (data.duration ?? data.time ?? DEFAULT_DURATION) : DEFAULT_DURATION;
 
-  // Start time (optional; recalculated later)
-  const startTimeText = data ? (data.startTime ?? '') : '';
-
   // Visual metadata (for badge / asset restore)
   const visualMeta = data ? (data.visualMeta ?? null) : null;
 
@@ -156,11 +153,6 @@ function addRow(data = null) {
              autocomplete="off"
              spellcheck="false"
              value="${escapeHtml(durationText)}">
-    </td>
-    <td>
-      <textarea class="input-start"
-                style="text-align:center;"
-                readonly>${escapeHtml(startTimeText)}</textarea>
     </td>
   `;
 
