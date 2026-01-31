@@ -225,8 +225,8 @@
 .storyboard-table tbody td:nth-child(3) .caption-wrap {
     position: absolute;
     top: 5px;
-    left: 5px;
-    right: 5px;
+    left: 0;
+    right: 0;
     bottom: 5px;
     display: flex;
     align-items: center;
@@ -261,9 +261,9 @@
 
         /* Column Widths (Start Time column removed; extra space goes to col-audio) */
         .col-no { width: 40px; }
-        .col-visual { width: 260px; } 
+        .col-visual { width: 180px; } 
         .col-audio { width: auto; }
-        .col-duration { width: 70px; }
+        .col-duration { width: 40px; }
 
         /* Visual Box Areas */
         .visual-box {
