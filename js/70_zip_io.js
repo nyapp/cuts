@@ -61,7 +61,7 @@ async function saveProjectZip() {
     rows.forEach((row, idx) => {
       const box = row.querySelector(".visual-box");
       const audio = row.querySelector(".input-audio")
-        ? row.querySelector(".input-audio").textContent
+        ? row.querySelector(".input-audio").innerText
         : "";
       const duration = row.querySelector(".input-duration")
         ? row.querySelector(".input-duration").value
