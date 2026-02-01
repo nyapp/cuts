@@ -1,6 +1,10 @@
 # CUTS  
 **Cut-based Unified Timeline Sheet**
 
+> **English**: CUTS is a local-first, browser-based tool for planning video timelines in a cut-based (storyboard) style. Add shots, set durations for auto time calculation, attach visual references and BGM, then save as ZIP. No backend required — open `index.html` and start planning.
+>
+> **日本語**: CUTS は、カット（場面）単位で映像タイムラインを計画するローカルファーストのブラウザツールです。カットを追加し、尺を入力すると開始時刻が自動計算されます。画像・動画やBGMを紐付け、ZIPで保存できます。サーバー不要で、`index.html` を開くだけで利用できます。
+
 CUTS is a local-first HTML application for planning video timelines in a cut-based manner.  
 It allows creators to design a storyboard-like timeline, calculate start times automatically,  
 and export the project for use in video editing workflows.
@@ -18,7 +22,7 @@ CUTS separates concerns clearly:
 - **JavaScript**: behavior (how it works)
 
 The application runs entirely in the browser (no backend required) and supports
-both lightweight data export and full project archiving.
+ZIP-based project archiving with assets.
 
 ---
 
@@ -29,15 +33,13 @@ both lightweight data export and full project archiving.
 - Drag & drop row reordering
 - Visual (image / video) and BGM asset handling
 - ZIP-based project save/load (including assets)
-- JSON export (data only, no media)
-- Screen / Print style separation for clean PDF output
+- A4 layout suitable for browser Print → PDF
 
 ---
 
 ## Project Layers
 
 CUTS is structured in layers, each with a clear responsibility.
-The README focuses on the conceptual entry point; detailed file-level documentation lives in the `docs/` directory.
 
 ### Presentation Layer
 - `index.html` — Application structure (no logic)
@@ -53,17 +55,12 @@ The README focuses on the conceptual entry point; detailed file-level documentat
 - `js/30_assets_visual.js` — Visual asset handling
 - `js/31_assets_bgm.js` — BGM asset handling
 - `js/70_zip_io.js` — ZIP save / load
-- `js/71_json_io.js` — JSON export
 
 ### Utilities Layer
 - `js/02_sanity_check.js` — Startup validation
+- `js/05_state.js` — Shared UI state
 - `js/10_dom.js` — Shared DOM utilities
 - `js/60_keyboard_ime.js` — IME / keyboard safety
-
-### Documentation
-- `docs/file-roles.md` — Detailed file responsibilities
-- `docs/data-flow.md` — ZIP / JSON data flow
-- `docs/design-notes.md` — UI / CSS design notes
 
 ---
 
@@ -77,23 +74,18 @@ The README focuses on the conceptual entry point; detailed file-level documentat
 1. Add shots using **ADD SHOT**
 2. Set Duration to auto-calculate Start Time
 3. Attach visual and audio assets if needed
-4. Save the project as a ZIP (recommended)
-5. Export JSON if only timeline data is required
-6. Use **EXPORT PDF** for printable planning sheets
+4. Save the project as a ZIP
+5. Use browser Print (Ctrl+P / Cmd+P) to export as PDF
 
 ---
 
-## Save Formats
+## Save Format
 
-### ZIP (Recommended)
+### ZIP
 - Includes:
   - manifest.json
   - referenced assets (image / video / audio)
 - Best for long-term storage and restoration
-
-### JSON
-- Data only (no media)
-- Useful for lightweight backups or tool integration
 
 ---
 
