@@ -1,119 +1,85 @@
 # CUTS  
 **Cut-based Unified Timeline Sheet**
 
-> **English**: CUTS is a local-first, browser-based tool for planning video timelines in a cut-based (storyboard) style. Add shots, set durations for auto time calculation, attach visual references and BGM, then save as ZIP. No backend required — open `index.html` and start planning.
+> **English**: CUTS is a local-first, browser-based tool for planning video timelines in a cut-based (storyboard) style. Add shots, set durations (start times are calculated automatically), attach visual references and BGM, then save as ZIP. No server or account required — open `index.html` and start planning.
 >
-> **日本語**: CUTS は、カット（場面）単位で映像タイムラインを計画するローカルファーストのブラウザツールです。カットを追加し、尺を入力すると開始時刻が自動計算されます。画像・動画やBGMを紐付け、ZIPで保存できます。サーバー不要で、`index.html` を開くだけで利用できます。
-
-CUTS is a local-first HTML application for planning video timelines in a cut-based manner.  
-It allows creators to design a storyboard-like timeline, calculate start times automatically,  
-and export the project for use in video editing workflows.
-
-This project is designed to be simple, maintainable, and tool-agnostic.
-
----
-
-## Concept
-
-CUTS separates concerns clearly:
-
-- **HTML**: structure (what exists)
-- **CSS**: presentation (how it looks)
-- **JavaScript**: behavior (how it works)
-
-The application runs entirely in the browser (no backend required) and supports
-ZIP-based project archiving with assets.
+> **日本語**: CUTS は、カット（場面）単位で映像タイムラインを計画するローカルファーストのブラウザツールです。カットを追加し、尺（秒）を入力すると開始時刻が自動計算され、ZIP に含まれます。画像・動画や BGM を紐付け、ZIP で保存できます。サーバー不要で、`index.html` を開くだけで利用できます。
 
 ---
 
 ## Features
 
-- Cut-based storyboard editing
-- Automatic Start Time calculation from Duration
-- Drag & drop row reordering
-- Visual (image / video) and BGM asset handling
-- ZIP-based project save/load (including assets)
-- A4 layout suitable for browser Print → PDF
+- **Cut-based storyboard** — Add shots, set duration per cut; start times are calculated automatically and included in export.
+- **Project header** — Title (delivery filename), date, version, platform (Signage / YouTube / Instagram Reels / TikTok / Web / Internal), format (resolution & aspect), FPS, loudness (LUFS), delivery (codec / container / audio).
+- **Main BGM** — Attach one main BGM file for the whole project; saved in the project ZIP.
+- **Visual reference per cut** — Image or video per row; paste or drag-and-drop supported.
+- **On-screen text / caption** — Editable caption per cut (e.g. for supers or notes).
+- **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
+- **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
+- **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
+
+No backend, no build step. Static HTML/CSS/JS; runs in any modern browser (Chrome, Edge, Safari recommended).
 
 ---
 
-## Project Layers
+## How to Run
 
-CUTS is structured in layers, each with a clear responsibility.
+### Option 1: GitHub Pages
 
-### Presentation Layer
-- `index.html` — Application structure (no logic)
-- `css/screen.css` — Screen UI styles
+1. In the repo **Settings** → **Pages**
+2. **Source**: Deploy from a branch  
+3. **Branch**: `main` (or your default), **Folder**: `/ (root)` → Save  
+4. After a few minutes, open `https://<username>.github.io/<repo>/`  
+   (e.g. `https://<username>.github.io/cuts/` if the repo is named `cuts`)
 
-### Application Logic Layer
-- `js/01_bootstrap.js` — Application entry point
-- `js/40_rows.js` — Row creation & restoration
-- `js/50_timeline.js` — Time calculation
+No build or Node required; the repo contents are served as-is.
 
-### Assets & IO Layer
-- `js/20_asset_store.js` — Asset registry
-- `js/30_assets_visual.js` — Visual asset handling
-- `js/31_assets_bgm.js` — BGM asset handling
-- `js/70_zip_io.js` — ZIP save / load
+### Option 2: Local
 
-### Utilities Layer
-- `js/02_sanity_check.js` — Startup validation
-- `js/05_state.js` — Shared UI state
-- `js/10_dom.js` — Shared DOM utilities
-- `js/60_keyboard_ime.js` — IME / keyboard safety
+Open `index.html` in a browser (double-click or drag into the window).  
+Recommended: Chrome, Edge, or Safari.
 
 ---
 
-## How to Use
+## Basic Workflow
 
-### Open the app
-- **GitHub Pages**: リポジトリの **Settings → Pages** で **Source: Deploy from a branch** を選び、**Branch: main**（または default）、**Folder: / (root)** にして Save。数分後に `https://<username>.github.io/cuts/` で開けます。
-- **ローカル**: ブラウザで `index.html` を直接開く  
-  (Chrome / Edge / Safari 推奨)
-
-### Basic workflow
-1. Add shots using **ADD SHOT**
-2. Set Duration to auto-calculate Start Time
-3. Attach visual and audio assets if needed
-4. Save the project as a ZIP
-5. Use browser Print (Ctrl+P / Cmd+P) to export as PDF
-
----
-
-## GitHub Pages で公開する
-
-このリポジトリは静的ファイルだけなので、GitHub Pages でそのまま動きます。
-
-1. リポジトリの **Settings** → **Pages**
-2. **Build and deployment** の **Source** で **Deploy from a branch** を選択
-3. **Branch** で `main`（またはデフォルトブランチ）、**Folder** で **/ (root)** を選んで **Save**
-4. 数分後、`https://<あなたのユーザー名>.github.io/cuts/` でアクセス可能（リポジトリ名が `cuts` の場合）
-
-ビルドや Node は不要です。プッシュした内容がそのまま配信されます。
+1. Set **PROJECT TITLE** (used as base filename for the ZIP).
+2. Optionally set **DATE**, **VERSION**, **PLATFORM**, **FORMAT**, **FPS**, **LOUDNESS**, **DELIVERY**.
+3. Add **MAIN BGM** if needed (single audio file for the project).
+4. Use **ADD SHOT** to add rows. For each row:
+   - Add a **Visual Reference** (image or video) by paste or file picker.
+   - Enter **On-screen Text / Caption**.
+   - Enter **Duration** in seconds; start time is calculated automatically.
+5. Reorder rows by dragging the handle in the No. column; use ⋯ to delete a row.
+6. **SAVE ZIP** to download the project (manifest + assets + thumbs).
+7. Use **LOAD ZIP** to restore a saved project.
+8. Use browser **Print → PDF** for a printable timeline sheet.
 
 ---
 
-## Save Format
+## Save Format (ZIP)
 
-### ZIP
-- Includes:
-  - manifest.json
-  - referenced assets (image / video / audio)
-- Best for long-term storage and restoration
+A saved project is a ZIP containing:
+
+- **manifest.json** — Project metadata: `header` (title, date, version, platform, format, fps, loudness, delivery), optional `bgm`, and `rows` (per-cut caption, duration, startTime, visual reference).
+- **assets/** — Referenced files (images, videos, BGM) with names like `<assetId>_<filename>`.
+- **thumbs/** — Optional thumbnail images per visual asset (`<assetId>.jpg`) for quick preview on load.
+
+Suitable for version control (binary assets) or long-term storage; load back via **LOAD ZIP**.
 
 ---
 
-## Video mock (Python)
+## Video Mock (Python)
 
 From a saved CUTS project (ZIP or extracted folder), you can generate a simple video mock with Python.
 
-**Setup** — 初回だけ。仮想環境の作成とパッケージ導入を自動で行います。
+**First-time setup** — The script creates a venv and installs dependencies automatically:
 
 ```bash
-./scripts/run_mock.sh --help   # 初回は .venv 作成＋pip install が走ります
+./scripts/run_mock.sh --help   # Creates .venv and installs deps on first run
 ```
 
-**Usage** — 以降はこのコマンドだけでOK（`pip` や `source .venv/bin/activate` は不要）
+**Usage:**
 
 ```bash
 # From ZIP
@@ -124,12 +90,14 @@ From a saved CUTS project (ZIP or extracted folder), you can generate a simple v
 
 # Options
 ./scripts/run_mock.sh project.zip -o output.mp4 --fps 30 --width 1920 --height 1080
-./scripts/run_mock.sh project.zip --no-bgm   # skip BGM
-./scripts/run_mock.sh project.zip --fast     # 短時間で書き出し（FFmpeg のみ、要 ffmpeg コマンド）
+./scripts/run_mock.sh project.zip --no-bgm   # Skip BGM
+./scripts/run_mock.sh project.zip --fast      # Quick export (FFmpeg only; requires ffmpeg)
 ```
 
+Each cut is rendered for its **Duration** (seconds). Image/video assets are used when present; otherwise a placeholder (cut number + caption) is shown. Optional **BGM** from the project is mixed onto the timeline. Output: MP4 (H.264/AAC), default 1920×1080, 30 fps.
+
 <details>
-<summary>仮想環境を使わず手動で入れたい場合</summary>
+<summary>Manual setup (without the wrapper script)</summary>
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -138,27 +106,27 @@ python scripts/build_mock_video.py project.zip
 ```
 </details>
 
-- Each cut is rendered for its **Duration** (seconds). Image/video assets are used when present; otherwise a placeholder (cut number + caption) is shown.
-- Optional **BGM** from the project is mixed onto the timeline.
-- Output: MP4 (H.264/AAC). Default size 1920×1080, 30 fps.
+---
+
+## Project Structure
+
+| Layer | Files | Role |
+|-------|--------|------|
+| **Presentation** | `index.html`, `css/screen.css` | Structure and styles |
+| **Application** | `js/01_bootstrap.js`, `js/40_rows.js`, `js/50_timeline.js` | Entry, rows, timing |
+| **Assets & I/O** | `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
+| **Utilities** | `js/02_sanity_check.js`, `js/05_state.js`, `js/10_dom.js`, `js/60_keyboard_ime.js` | Startup check, state, DOM helpers, IME/keyboard |
+
+JSZip is loaded from CDN in `index.html`; no package manager required for the web app.
 
 ---
 
 ## Design Principles
 
-- Local-first (no server dependency)
-- Explicit responsibility per file
-- No inline JavaScript handlers in HTML
-- Maintainable CSS using variables
-- Japanese IME-friendly input handling
-
----
-
-## Status
-
-This project is under active development.
-Internal structure and documentation are continuously refined
-to improve long-term maintainability.
+- **Local-first** — No server; all data stays in the browser or in files you save.
+- **Clear responsibilities** — HTML structure, CSS presentation, JS behavior; no inline handlers in HTML.
+- **Maintainable CSS** — Variables and consistent naming.
+- **IME-friendly** — Japanese (and other) input method editors work correctly in caption fields.
 
 ---
 
