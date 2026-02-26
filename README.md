@@ -67,8 +67,9 @@ CUTS is structured in layers, each with a clear responsibility.
 ## How to Use
 
 ### Open the app
-- Open `index.html` directly in a modern browser  
-  (Chrome / Edge / Safari recommended)
+- **GitHub Pages**: リポジトリの **Settings → Pages** で **Source: Deploy from a branch** を選び、**Branch: main**（または default）、**Folder: / (root)** にして Save。数分後に `https://<username>.github.io/cuts/` で開けます。
+- **ローカル**: ブラウザで `index.html` を直接開く  
+  (Chrome / Edge / Safari 推奨)
 
 ### Basic workflow
 1. Add shots using **ADD SHOT**
@@ -79,6 +80,19 @@ CUTS is structured in layers, each with a clear responsibility.
 
 ---
 
+## GitHub Pages で公開する
+
+このリポジトリは静的ファイルだけなので、GitHub Pages でそのまま動きます。
+
+1. リポジトリの **Settings** → **Pages**
+2. **Build and deployment** の **Source** で **Deploy from a branch** を選択
+3. **Branch** で `main`（またはデフォルトブランチ）、**Folder** で **/ (root)** を選んで **Save**
+4. 数分後、`https://<あなたのユーザー名>.github.io/cuts/` でアクセス可能（リポジトリ名が `cuts` の場合）
+
+ビルドや Node は不要です。プッシュした内容がそのまま配信されます。
+
+---
+
 ## Save Format
 
 ### ZIP
@@ -86,6 +100,47 @@ CUTS is structured in layers, each with a clear responsibility.
   - manifest.json
   - referenced assets (image / video / audio)
 - Best for long-term storage and restoration
+
+---
+
+## Video mock (Python)
+
+From a saved CUTS project (ZIP or extracted folder), you can generate a simple video mock with Python.
+
+**Setup** — 初回だけ。仮想環境の作成とパッケージ導入を自動で行います。
+
+```bash
+./scripts/run_mock.sh --help   # 初回は .venv 作成＋pip install が走ります
+```
+
+**Usage** — 以降はこのコマンドだけでOK（`pip` や `source .venv/bin/activate` は不要）
+
+```bash
+# From ZIP
+./scripts/run_mock.sh project.zip
+
+# From extracted directory (manifest.json + assets/)
+./scripts/run_mock.sh path/to/extracted_project/
+
+# Options
+./scripts/run_mock.sh project.zip -o output.mp4 --fps 30 --width 1920 --height 1080
+./scripts/run_mock.sh project.zip --no-bgm   # skip BGM
+./scripts/run_mock.sh project.zip --fast     # 短時間で書き出し（FFmpeg のみ、要 ffmpeg コマンド）
+```
+
+<details>
+<summary>仮想環境を使わず手動で入れたい場合</summary>
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r scripts/requirements-mock.txt
+python scripts/build_mock_video.py project.zip
+```
+</details>
+
+- Each cut is rendered for its **Duration** (seconds). Image/video assets are used when present; otherwise a placeholder (cut number + caption) is shown.
+- Optional **BGM** from the project is mixed onto the timeline.
+- Output: MP4 (H.264/AAC). Default size 1920×1080, 30 fps.
 
 ---
 
