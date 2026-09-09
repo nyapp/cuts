@@ -17,6 +17,7 @@
 - **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
 - **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
 - **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
+- **Export NLE** — One ZIP with a Final Cut Pro 7 XML (Premiere Pro / DaVinci Resolve), SRT captions, OpenTimelineIO (.otio) and FCPXML (Final Cut Pro), plus the referenced media. See [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 No backend, no build step. Static HTML/CSS/JS; runs in any modern browser (Chrome, Edge, Safari recommended).
 
@@ -54,6 +55,7 @@ Recommended: Chrome, Edge, or Safari.
 6. **SAVE ZIP** to download the project (manifest + assets + thumbs).
 7. Use **LOAD ZIP** to restore a saved project.
 8. Use browser **Print → PDF** for a printable timeline sheet.
+9. Use **EXPORT NLE** to hand the timeline to an editor: unzip, import the `.xml` into Premiere Pro (or the `.otio` / `.fcpxml` into Resolve / Final Cut Pro), relink `assets/` if asked, then drop the `.srt` on the sequence for captions. Details and limitations: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 ---
 
@@ -115,6 +117,7 @@ python scripts/build_mock_video.py project.zip
 | **Presentation** | `index.html`, `css/screen.css` | Structure and styles |
 | **Application** | `js/01_bootstrap.js`, `js/40_rows.js`, `js/50_timeline.js` | Entry, rows, timing |
 | **Assets & I/O** | `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
+| **NLE export** | `js/80_nle_export.js`, `scripts/nle_export_smoke.js` | FCP7 XML / SRT / OTIO / FCPXML serializers + export ZIP; Node smoke test |
 | **Utilities** | `js/02_sanity_check.js`, `js/05_state.js`, `js/10_dom.js`, `js/60_keyboard_ime.js` | Startup check, state, DOM helpers, IME/keyboard |
 
 JSZip is loaded from CDN in `index.html`; no package manager required for the web app.

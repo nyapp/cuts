@@ -44,3 +44,5 @@ temp/
 # ===== Logs =====
 *.log
 EOF
+# ===== NLE export smoke output =====
+scripts/out_nle_smoke/

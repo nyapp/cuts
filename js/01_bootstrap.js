@@ -68,6 +68,13 @@ function bootstrapCUTS() {
     });
   }
 
+  const btnExportNle = document.getElementById('btn-export-nle');
+  if (btnExportNle) {
+    btnExportNle.addEventListener('click', () => {
+      if (typeof exportForNle === 'function') exportForNle();
+    });
+  }
+
   const btnAddShot = document.getElementById('btn-add-shot');
   if (btnAddShot) {
     btnAddShot.addEventListener('click', () => {

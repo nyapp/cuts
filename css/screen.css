@@ -632,6 +632,7 @@
     .btn-add { background-color: var(--btn-bg); color: var(--text-color); }
     .btn-save { background-color: var(--btn-bg); color: var(--text-color); }
     .btn-load { background-color: var(--btn-bg); color: var(--text-color); }
+    .btn-export { background-color: var(--btn-bg); color: var(--text-color); }
 
     /* Transparent primary control buttons (text-only) */
     .controls-left button {
