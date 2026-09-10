@@ -126,7 +126,15 @@ JSZip is loaded from CDN in `index.html`; no package manager required for the we
 
 ## App Version
 
-The version is shown at the right end of the controls bar (e.g. `CUTS v1.1.0`) and written into `manifest.json` as `app.version` on SAVE ZIP. It lives in one place: `js/00_version.js`. Bump it there when releasing.
+The version is shown at the right end of the controls bar (e.g. `CUTS v1.1.0`) and written into `manifest.json` as `app.version` on SAVE ZIP.
+
+To release a new version run:
+
+```bash
+./scripts/bump_version.sh 1.2.0
+```
+
+It updates `js/00_version.js` and the `?v=` cache-busting query on every local `<script>`/`<link>` in `index.html`, so browsers (Safari in particular) fetch the new files instead of serving cached ones after a GitHub Pages deploy.
 
 ## Design Principles
 
