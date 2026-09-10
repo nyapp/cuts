@@ -46,3 +46,8 @@ temp/
 EOF
 # ===== NLE export smoke output =====
 scripts/out_nle_smoke/
+
+# ===== Python =====
+.venv/
+__pycache__/
+*.pyc
