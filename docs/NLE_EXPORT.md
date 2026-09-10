@@ -88,12 +88,13 @@ xmeml の `<pathurl>` と FCPXML の `src` は本来 **絶対 file URL**。ブ�
 | Node スモーク（`node scripts/nle_export_smoke.js`）→ OTIO 0.18.1 の `fcp_xml` / `otio_json` アダプタで読み戻し、全カットの開始・尺・BGM・マーカーが一致 | 済 |
 | Chromium（Playwright）で index.html を開き、動画/静止画/BGM を投入 → EXPORT NLE → ZIP 展開 → 上記読み戻し | 済 |
 | XML の整形式（minidom parse） | 済 |
-| **Premiere Pro 実機での .xml インポート** | **未検証** |
+| Premiere Pro 実機での .xml インポート（macOS、2026-09-10） | 済: シーケンス生成、V1 に 3 カットが尺どおり、静止画も任意尺で配置、メディア自動リンク、シーケンスマーカーにカット名＋テロップ本文 |
+| Premiere Pro 実機での .srt インポート / BGM 付き .xml | 未検証 |
 | **DaVinci Resolve 実機での .xml / .otio / .fcpxml インポート** | **未検証** |
 | **Final Cut Pro 実機での .fcpxml インポート** | **未検証** |
 | Premiere Pro 2026 の .otio インポート | 未検証 |
 
-実機で最初に確認する順: Premiere に `.xml` → 「メディアをリンク」 → `.srt` をドロップ。ここで問題が出たらこのファイルの「出力ファイルの構造」を照らして修正する。
+残りの実機確認: Premiere に `.srt` をドロップ、BGM ありプロジェクトの `.xml`、Resolve / Final Cut。問題が出たらこのファイルの「出力ファイルの構造」を照らして修正する。
 
 ## 既知の制限と次の拡張
 
