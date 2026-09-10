@@ -46,7 +46,17 @@ function applyInitialDefaultsIfEmpty() {
   }
 }
 
+function showAppVersion() {
+  const v = typeof CUTS_APP_VERSION === 'string' ? CUTS_APP_VERSION : '';
+  if (!v) return;
+  const el = document.getElementById('app-version');
+  if (el) el.textContent = `CUTS v${v}`;
+  document.documentElement.dataset.appVersion = v;
+  console.info(`CUTS v${v}`);
+}
+
 function bootstrapCUTS() {
+  showAppVersion();
     if (typeof sanityCheckCUTS === 'function') {
     const ok = sanityCheckCUTS();
     if (!ok) return;

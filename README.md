@@ -118,11 +118,15 @@ python scripts/build_mock_video.py project.zip
 | **Application** | `js/01_bootstrap.js`, `js/40_rows.js`, `js/50_timeline.js` | Entry, rows, timing |
 | **Assets & I/O** | `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
 | **NLE export** | `js/80_nle_export.js`, `scripts/nle_export_smoke.js` | FCP7 XML / SRT / OTIO / FCPXML serializers + export ZIP; Node smoke test |
-| **Utilities** | `js/02_sanity_check.js`, `js/05_state.js`, `js/10_dom.js`, `js/60_keyboard_ime.js` | Startup check, state, DOM helpers, IME/keyboard |
+| **Utilities** | `js/00_version.js`, `js/02_sanity_check.js`, `js/05_state.js`, `js/10_dom.js`, `js/60_keyboard_ime.js` | App version, startup check, state, DOM helpers, IME/keyboard |
 
 JSZip is loaded from CDN in `index.html`; no package manager required for the web app.
 
 ---
+
+## App Version
+
+The version is shown at the right end of the controls bar (e.g. `CUTS v1.1.0`) and written into `manifest.json` as `app.version` on SAVE ZIP. It lives in one place: `js/00_version.js`. Bump it there when releasing.
 
 ## Design Principles
 

@@ -27,6 +27,7 @@ async function saveProjectZip() {
 
     // Build manifest
     const manifest = {
+      app: { name: 'CUTS', version: typeof CUTS_APP_VERSION === 'string' ? CUTS_APP_VERSION : '' },
       header: {
         title: title || "",
         date: val("h-date"),
