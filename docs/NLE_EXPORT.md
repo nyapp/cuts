@@ -9,9 +9,10 @@ CUTS のショットリストを、Premiere Pro / DaVinci Resolve / Final Cut Pr
 |---|---|
 | 主フォーマット | **Final Cut Pro 7 XML（xmeml v4, 拡張子 .xml）** + **SRT** |
 | 併記フォーマット | OpenTimelineIO (.otio)、FCPXML 1.11 (.fcpxml) |
-| 同梱 | `assets/`（プロジェクト ZIP と同じ命名）+ ビジュアル未設定カット用のプレースホルダ PNG + README.txt |
-| テロップの運び方 | 3 経路を同時に出す: (1) SRT → キャプショントラック、(2) シーケンスマーカーのコメント、(3) FCPXML では編集可能な Basic Title |
-| メディアパス | 書き出し時に展開先フォルダを 1 回だけ聞く（localStorage に記憶）。空なら相対パスで書き、NLE 側の再リンクに任せる |
+| ZIP 構成 | 最上位 1 フォルダ `<title>_NLE_<yyyymmdd-hhmm>/` の中に `.xml` + `assets/` + `README.txt`。補助形式は `other_formats/` |
+| テロップの運び方 | **xmeml の V2 に FCP7 Text ジェネレータ**として同梱（Premiere がタイトル/グラフィックに変換、クリップに追従）。FCPXML は Basic Title。SRT は `other_formats/` に代替として同梱 |
+| マーカー | 出さない（シーケンスマーカーはクリップに追従せず編集の邪魔になるため、v1.2.0 で廃止） |
+| メディアパス | コントロールバーの **NLE FOLDER**（ZIP を展開する場所、localStorage に記憶）+ `<title>_NLE_<日時>/assets/…`。展開先が固定なら再リンク不要。空なら相対パスで書き、NLE 側の再リンクに任せる |
 | 尺→フレーム | 累積秒を丸めてフレーム境界を決める（カット単位で丸めない）。合計尺がズレない |
 | 作らないもの | .prproj 直接生成、AAF、EDL、Premiere プラグイン（理由は下表） |
 
@@ -39,18 +40,19 @@ Premiere Pro が **ネイティブに** 読むタイムライン交換形式は�
 
 - `<sequence>`: 名前、総尺（フレーム）、`<rate>`（timebase + ntsc）、`<timecode>` 00:00:00:00 NDF、`<format>` に解像度・正方画素
 - V1: カットごとに `<clipitem>`。`start/end` がシーケンス位置、`in/out` が素材のイン・アウト。`<name>` は `Cut 01` 形式、`<comments><mastercomment1>` にテロップ
+- V2: テロップのあるカットごとに `<generatoritem>`（`effectid` = Text、`str` に本文、フォント Hiragino Sans、サイズ = 高さ/18、下寄せ origin vert 0.35）。[Adobe 公式](https://helpx.adobe.com/premiere-pro/using/importing-xml-project-files-final.html)は FCP7 Text ジェネレータをタイトルとして読み込むと明記
 - A1: BGM 1 クリップ（`<sourcetrack>` audio）
-- `<marker>`（シーケンスマーカー）: カットごとに `in/out` 付き、`<comment>` にテロップ
+- マーカーは出さない
 - 静止画は `<file>` の `<duration>` をカット尺にする（OTIO の fcp_xml アダプタと同じ流儀。Premiere は静止画を任意尺で扱う）
 
 ### `<title>.srt`
 
-テロップのあるカットだけ。開始・終了はフレーム境界から算出（ms 丸め）。
+テロップのあるカットだけ。開始・終了はフレーム境界から算出（ms 丸め）。`other_formats/` に同梱（V2 タイトルがうまく変換されない環境向けの代替）。
 
 ### `<title>.otio`
 
 `Timeline.1 > Stack.1 > Track.1(V1/A1) > Clip.2 + ExternalReference.1`。
-素材がカットより短い場合は `Gap.1` で位置を保つ。シーケンスマーカー（Stack の markers）にテロップ。`metadata.CUTS` にカット番号・種別を残す。
+素材がカットより短い場合は `Gap.1` で位置を保つ。マーカーは出さない。テロップは `metadata.CUTS.caption` に残す。
 
 ### `<title>.fcpxml`（1.11）
 
@@ -71,13 +73,13 @@ Premiere Pro が **ネイティブに** 読むタイムライン交換形式は�
 
 ## メディアパスと再リンク
 
-xmeml の `<pathurl>` と FCPXML の `src` は本来 **絶対 file URL**。ブラウザからはローカルの絶対パスが分からないので、書き出し時に「展開予定フォルダ」を 1 回だけ prompt で聞き、以後は localStorage に記憶する。
+xmeml の `<pathurl>` と FCPXML の `src` は本来 **絶対 file URL**。ブラウザからはローカルの絶対パスが分からないので、コントロールバーの **NLE FOLDER** に「ZIP を展開する場所」を 1 回入れてもらう（localStorage に記憶、印刷シートには出ない）。ZIP は最上位に `<title>_NLE_<日時>/` を持つので、そこで展開すればパスが一致し再リンクは不要。日時付きなので再書き出しで衝突しない。Safari は既定で ZIP を自動展開するため、NLE FOLDER = `~/Downloads` にすると「EXPORT NLE → Premiere で読み込み」の 2 手順で完結する。
 
-| 入力 | xmeml pathurl | fcpxml / otio |
+| NLE FOLDER | xmeml pathurl | fcpxml / otio |
 |---|---|---|
-| `/Users/yuki/proj` | `file://localhost/Users/yuki/proj/assets/…` | `file:///Users/yuki/proj/assets/…` |
-| `C:\work\proj` | `file://localhost/C:/work/proj/assets/…` | `file:///C:/work/proj/assets/…` |
-| 空欄 | `assets/…`（相対） | `assets/…`（相対） |
+| `/Users/yuki/Downloads` | `file://localhost/Users/yuki/Downloads/<title>_NLE_<日時>/assets/…` | `file:///Users/yuki/Downloads/<title>_NLE_<日時>/assets/…` |
+| `C:\work` | `file://localhost/C:/work/<title>_NLE_<日時>/assets/…` | `file:///C:/work/<title>_NLE_<日時>/assets/…` |
+| 空欄 | `<title>_NLE_<日時>/assets/…`（相対） | 同左 |
 
 相対のままでも Premiere は「メディアをリンク」ダイアログで `assets/` 内の 1 ファイルを指定すれば同フォルダを一括再リンクする（README.txt に手順を同梱）。
 
@@ -89,12 +91,13 @@ xmeml の `<pathurl>` と FCPXML の `src` は本来 **絶対 file URL**。ブ�
 | Chromium（Playwright）で index.html を開き、動画/静止画/BGM を投入 → EXPORT NLE → ZIP 展開 → 上記読み戻し | 済 |
 | XML の整形式（minidom parse） | 済 |
 | Premiere Pro 実機での .xml インポート（macOS、2026-09-10） | 済: シーケンス生成、V1 に 3 カットが尺どおり、静止画も任意尺で配置、メディア自動リンク、シーケンスマーカーにカット名＋テロップ本文 |
+| **Premiere Pro 実機での V2 Text ジェネレータ → タイトル変換（v1.2.0）** | **未検証**（Adobe 公式ドキュメントの記述に基づく実装） |
 | Premiere Pro 実機での .srt インポート / BGM 付き .xml | 未検証 |
 | **DaVinci Resolve 実機での .xml / .otio / .fcpxml インポート** | **未検証** |
 | **Final Cut Pro 実機での .fcpxml インポート** | **未検証** |
 | Premiere Pro 2026 の .otio インポート | 未検証 |
 
-残りの実機確認: Premiere に `.srt` をドロップ、BGM ありプロジェクトの `.xml`、Resolve / Final Cut。問題が出たらこのファイルの「出力ファイルの構造」を照らして修正する。
+残りの実機確認: v1.2.0 の `.xml`（V2 タイトル、NLE FOLDER 指定時の自動リンク）、BGM ありプロジェクト、Resolve / Final Cut。問題が出たらこのファイルの「出力ファイルの構造」を照らして修正する。
 
 ## 既知の制限と次の拡張
 

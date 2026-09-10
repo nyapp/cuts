@@ -113,6 +113,7 @@ function bootstrapCUTS() {
   if (typeof setupAudioInputListener === 'function') setupAudioInputListener();
   if (typeof setupBgmBoxEvents === 'function') setupBgmBoxEvents();
   if (typeof setupBgmActionButton === 'function') setupBgmActionButton();
+  if (typeof setupNleFolderInput === 'function') setupNleFolderInput();
 
   setupProjectTitleSync();
   applyInitialDefaultsIfEmpty();

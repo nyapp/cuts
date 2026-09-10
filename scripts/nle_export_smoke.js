@@ -20,6 +20,7 @@ const input = {
   fps: '29.97',
   format: '1920x1080 / 16:9',
   baseUrl: process.env.CUTS_BASE || '',
+  exportFolder: 'sample_NLE',
   rows: [
     { no: 1, caption: 'オープニング\n二行目', durationSec: 3, visual: { assetId: 'v0001', kind: 'video', file: 'assets/v0001_clip a.mp4', name: 'clip a.mp4', sourceSec: 11.03 } },
     { no: 2, caption: 'Still image cut', durationSec: 2.5, visual: { assetId: 'v0002', kind: 'image', file: 'assets/v0002_still.png', name: 'still.png', sourceSec: null } },

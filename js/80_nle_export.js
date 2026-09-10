@@ -1,13 +1,20 @@
 // js/80_nle_export.js
 // Export the current storyboard as an NLE-importable timeline bundle.
 //
-// Output ZIP layout:
-//   <title>.xml      Final Cut Pro 7 XML (xmeml v4)  -> Premiere Pro, DaVinci Resolve
-//   <title>.srt      SubRip captions                 -> Premiere Pro / Resolve / FCP caption track
-//   <title>.otio     OpenTimelineIO JSON             -> Premiere Pro 2026, Resolve, Blender, otioconvert
-//   <title>.fcpxml   FCPXML 1.11                     -> Final Cut Pro, Resolve (with editable titles)
-//   assets/          referenced media (same naming as the project ZIP) + generated placeholder PNGs
-//   README.txt       import steps (ja)
+// Output ZIP layout (everything under one top-level folder so any unzipper yields it):
+//   <title>_NLE_<yyyymmdd-hhmm>/
+//     <title>.xml              Final Cut Pro 7 XML (xmeml v4) -> Premiere Pro, DaVinci Resolve.
+//                              V1 = cuts, V2 = captions as FCP7 Text generators (Premiere turns them
+//                              into titles/graphics), A1 = BGM.
+//     assets/                  referenced media (same naming as the project ZIP) + placeholder PNGs
+//     README.txt               import steps (ja)
+//     other_formats/<title>.srt     captions as SubRip (fallback / Resolve / FCP)
+//     other_formats/<title>.otio    OpenTimelineIO JSON (Premiere Pro 2026, Resolve, Blender)
+//     other_formats/<title>.fcpxml  FCPXML 1.11 (Final Cut Pro, with editable titles)
+//
+// Media paths: the user sets the folder where they unzip exports (NLE FOLDER in the controls bar,
+// remembered in localStorage). Paths are written as <folder>/<title>_NLE_<stamp>/assets/... so an
+// export unzipped there links without any relink dialog. Empty folder -> relative paths.
 //
 // The serializers below are pure functions of a "timeline model" so they can be
 // unit-tested in Node (see scripts/nle_export_smoke.js). Browser-only code
@@ -89,6 +96,8 @@
     const { width, height } = parseFormat(input.format);
     const title = String(input.title || 'untitled').trim() || 'untitled';
     const baseUrl = String(input.baseUrl || '');
+    const safeTitle = title.replace(/[\\\/:*?"<>|]/g, '_');
+    const exportFolder = input.exportFolder || `${safeTitle}_NLE_${exportStamp(input.now)}`;
     const toFrames = (sec) => Math.round(sec * fps.rate + 1e-6);
 
     const warnings = [];
@@ -167,7 +176,19 @@
       };
     }
 
-    return { title, fps, width, height, baseUrl, cuts, bgm, totalFrames, warnings };
+    return { title, safeTitle, exportFolder, fps, width, height, baseUrl, cuts, bgm, totalFrames, warnings };
+  }
+
+  // yyyymmdd-hhmm, local time
+  function exportStamp(now) {
+    const d = now instanceof Date ? now : new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+  }
+
+  // Media URL for a model-relative path (assets/...), including the export folder.
+  function mediaUrl(model, rel, style) {
+    return toFileUrl(model.baseUrl, `${model.exportFolder}/${rel}`, style);
   }
 
   // Attach placeholder assets (kind 'placeholder') for cuts without a visual.
@@ -198,7 +219,7 @@
     const { fps, width, height } = model;
     const ntsc = fps.ntsc ? 'TRUE' : 'FALSE';
     const rate = `<rate><timebase>${fps.timebase}</timebase><ntsc>${ntsc}</ntsc></rate>`;
-    const url = (rel) => toFileUrl(model.baseUrl, rel, 'localhost');
+    const url = (rel) => mediaUrl(model, rel, 'localhost');
     const lines = [];
     const L = (s) => lines.push(s);
 
@@ -264,6 +285,14 @@
       L('</clipitem>');
     });
     L('</track>');
+    // --- V2: captions as FCP7 "Text" generators (Premiere imports them as titles) ---
+    L('<track>');
+    model.cuts.forEach((c) => {
+      if (!c.caption) return;
+      const id = `clipitem-${++clipSeq}`;
+      L(textGeneratorItem(id, c, model));
+    });
+    L('</track>');
     L('</video>');
     // --- audio ---
     L('<audio>');
@@ -289,13 +318,45 @@
     L('</track>');
     L('</audio>');
     L('</media>');
-    // --- sequence markers (one per cut, caption as comment) ---
-    model.cuts.forEach((c) => {
-      L(`<marker><name>${escXml(c.name)}</name><comment>${escXml(c.caption)}</comment><in>${c.startFrame}</in><out>${c.endFrame}</out></marker>`);
-    });
     L('</sequence>');
     L('</xmeml>');
     return lines.join('\n') + '\n';
+  }
+
+  // FCP7 "Text" generator item for one cut (V2). Premiere Pro converts FCP7 Text
+  // generators to titles on import; Resolve shows them as Text+ / generator.
+  const TITLE_FONT = 'Hiragino Sans';
+  function textGeneratorItem(id, cut, model) {
+    const { fps, height } = model;
+    const rate = `<rate><timebase>${fps.timebase}</timebase><ntsc>${fps.ntsc ? 'TRUE' : 'FALSE'}</ntsc></rate>`;
+    const dur = cut.durFrames;
+    const fontSize = Math.max(24, Math.round(height / 18));
+    const param = (pid, name, value, extra) => `<parameter><parameterid>${pid}</parameterid><name>${name}</name>${extra || ''}<value>${value}</value></parameter>`;
+    return [
+      `<generatoritem id="${id}">`,
+      `<name>${escXml(cut.caption.split('\n')[0])}</name>`,
+      `<duration>${dur}</duration>`,
+      rate,
+      `<start>${cut.startFrame}</start><end>${cut.endFrame}</end>`,
+      `<in>0</in><out>${dur}</out>`,
+      '<enabled>TRUE</enabled><anamorphic>FALSE</anamorphic><alphatype>black</alphatype>',
+      '<effect><name>Text</name><effectid>Text</effectid><effectcategory>Text</effectcategory><effecttype>generator</effecttype><mediatype>video</mediatype>',
+      param('str', 'Text', escXml(cut.caption)),
+      param('fontname', 'Font', escXml(TITLE_FONT)),
+      param('fontsize', 'Size', fontSize, '<valuemin>0</valuemin><valuemax>1000</valuemax>'),
+      param('fontstyle', 'Style', 1, '<valuemin>1</valuemin><valuemax>4</valuemax>'),
+      param('fontalign', 'Alignment', 2, '<valuemin>1</valuemin><valuemax>3</valuemax>'),
+      param('fontcolor', 'Font Color', '<alpha>255</alpha><red>255</red><green>255</green><blue>255</blue>'),
+      param('origin', 'Origin', '<horiz>0</horiz><vert>0.35</vert>'),
+      param('fonttrack', 'Tracking', 1, '<valuemin>-200</valuemin><valuemax>200</valuemax>'),
+      param('leading', 'Leading', 0, '<valuemin>-100</valuemin><valuemax>100</valuemax>'),
+      param('aspect', 'Aspect', 1, '<valuemin>0.1</valuemin><valuemax>5</valuemax>'),
+      param('autokern', 'Auto Kerning', 'TRUE'),
+      param('subpixel', 'Use Subpixel', 'TRUE'),
+      '</effect>',
+      '<sourcetrack><mediatype>video</mediatype></sourcetrack>',
+      '</generatoritem>',
+    ].join('');
   }
 
   // ---------------------------------------------------------------------------
@@ -330,10 +391,7 @@
     const rate = model.fps.rate;
     const RT = (v) => ({ OTIO_SCHEMA: 'RationalTime.1', rate, value: v });
     const TR = (start, dur) => ({ OTIO_SCHEMA: 'TimeRange.1', start_time: RT(start), duration: RT(dur) });
-    const url = (rel) => toFileUrl(model.baseUrl, rel, 'triple');
-    const marker = (name, start, dur, comment) => ({
-      OTIO_SCHEMA: 'Marker.2', metadata: {}, name, color: 'RED', marked_range: TR(start, dur), comment: comment || '',
-    });
+    const url = (rel) => mediaUrl(model, rel, 'triple');
     const clip = (name, asset, inF, outF, metadata) => ({
       OTIO_SCHEMA: 'Clip.2',
       metadata: metadata || {},
@@ -380,7 +438,7 @@
         name: 'tracks',
         source_range: null,
         effects: [],
-        markers: model.cuts.map((c) => marker(c.name, c.startFrame, c.durFrames, c.caption)),
+        markers: [],
         enabled: true,
         color: null,
         children: [track('V1', 'Video', videoChildren), track('A1', 'Audio', audioChildren)],
@@ -395,7 +453,7 @@
   function buildFcpxml(model) {
     const { fps, width, height } = model;
     const T = (frames) => (frames === 0 ? '0s' : `${frames * fps.num}/${fps.den}s`);
-    const url = (rel) => toFileUrl(model.baseUrl, rel, 'triple');
+    const url = (rel) => mediaUrl(model, rel, 'triple');
     const fmtName = (() => {
       const std = { 1080: '1080', 2160: '2160', 720: '720' }[height];
       const r = { 23.976: '2398', 24: '24', 25: '25', 29.97: '2997', 30: '30', 50: '50', 59.94: '5994', 60: '60' }[fps.rate];
@@ -458,7 +516,6 @@
         L(`<text-style-def id="${ts}"><text-style font="Helvetica" fontSize="72" fontFace="Regular" fontColor="1 1 1 1" alignment="center"/></text-style-def>`);
         L('</title>');
       }
-      L(`<marker start="${T(a.inFrame)}" duration="${fps.frameDuration}" value="${escXml(c.name)}"${c.caption ? ` note="${escXml(c.caption)}"` : ''}/>`);
       if (len < c.durFrames) {
         L(`</${tag}>`);
         L(`<gap name="Gap" offset="${T(c.startFrame + len)}" start="0s" duration="${T(c.durFrames - len)}"/>`);
@@ -479,38 +536,36 @@
   // README (ja) bundled into the ZIP
   // ---------------------------------------------------------------------------
   function buildReadme(model) {
-    const t = model.title;
+    const t = model.safeTitle;
     const rel = !model.baseUrl;
     return [
-      `CUTS NLE export: ${t}`,
+      `CUTS NLE export: ${model.title}`,
+      '',
+      'Premiere Pro での手順',
+      rel
+        ? '  1. この ZIP を展開する（macOS はダブルクリック）'
+        : `  1. この ZIP を「NLE FOLDER」に指定したフォルダ（${model.baseUrl}）で展開する（macOS はダブルクリック）`,
+      `  2. Premiere で File > 読み込み → ${t}.xml`,
+      rel
+        ? '  3. 「メディアをリンク」が出たら assets/ の中のファイルを 1 つ選ぶ（残りは自動で再リンク）'
+        : '  3. 以上。メディアは自動でリンクされる（別の場所に展開した場合だけ「メディアをリンク」で assets/ のファイルを 1 つ選ぶ）',
+      '',
+      '開いた後のシーケンス',
+      '  V1  各カット（Cut 01, 02, ...）。尺どおりに並ぶ。Visual Reference が無いカットは黒地にカット番号の PNG',
+      '  V2  テロップ（Text ジェネレータ → Premiere がタイトル/グラフィックに変換）。クリップと一緒に動く',
+      '  A1  BGM（設定していた場合）',
       '',
       '同梱ファイル',
-      `  ${t}.xml     Final Cut Pro 7 XML  -> Premiere Pro / DaVinci Resolve 用（推奨）`,
-      `  ${t}.srt     字幕 (SubRip)        -> テロップ。Premiere / Resolve / FCP のキャプショントラックに読み込む`,
-      `  ${t}.otio    OpenTimelineIO       -> Premiere Pro 2026 / Resolve / Blender / otioconvert 用`,
-      `  ${t}.fcpxml  FCPXML 1.11          -> Final Cut Pro 用（テロップは編集可能な Basic Title として入る）`,
-      '  assets/      参照メディア。Visual Reference が無いカットは placeholder_NN.png（黒地にカット番号）',
-      '',
-      '手順（Premiere Pro）',
-      '  1. この ZIP をプロジェクト用フォルダに展開する（assets/ と .xml を同じ階層に置く）',
-      `  2. File > Import で ${t}.xml を選ぶ → シーケンスが作られる`,
-      rel
-        ? '  3. 「メディアをリンク」ダイアログが出たら assets/ 内のファイルを 1 つ指定する。同フォルダの残りは自動で再リンクされる'
-        : '  3. 書き出し時に指定したフォルダに展開していればそのまま開ける。別の場所なら「メディアをリンク」で assets/ 内のファイルを 1 つ指定する',
-      `  4. File > Import で ${t}.srt を読み込み、シーケンスにドロップ → キャプショントラックにテロップが並ぶ`,
-      '     テキストレイヤーにしたい場合: キャプションを選択 > 右クリック > 「キャプションをグラフィックにアップグレード」',
-      '  5. 各カットの範囲と本文はシーケンスマーカー（Cut 01, 02, ...）にも入っている',
-      '',
-      '手順（DaVinci Resolve）',
-      `  File > Import > Timeline で ${t}.xml（または .otio / .fcpxml）を開く。字幕は File > Import > Subtitle で ${t}.srt`,
-      '',
-      '手順（Final Cut Pro）',
-      `  File > Import > XML で ${t}.fcpxml を開く。メディアが見つからない場合はイベント上で「ファイルを再リンク」`,
+      `  ${t}.xml                  Final Cut Pro 7 XML。Premiere / DaVinci Resolve 用`,
+      '  assets/                   参照メディア',
+      `  other_formats/${t}.srt    テロップの字幕ファイル（V2 のタイトルがうまく出ない場合の代替。読み込んでシーケンスにドロップ）`,
+      `  other_formats/${t}.otio   OpenTimelineIO。Premiere Pro 2026 / Resolve / Blender 用`,
+      `  other_formats/${t}.fcpxml FCPXML 1.11。Final Cut Pro 用（テロップは Basic Title）`,
       '',
       '注意',
       '  - 尺は秒からフレームに丸めている（累積で丸めるので合計尺はズレない）',
-      '  - 動画素材はカットの尺より短い場合、素材の長さで切っている（XML/OTIO では後ろにギャップ）',
-      '  - 動画素材の音声は載せていない（BGM のみ A1）',
+      '  - 動画素材はカットの尺より短い場合、素材の長さで切っている',
+      '  - 動画素材の音声は載せていない（A1 は BGM のみ）',
       '  - 動画素材は先頭（00:00）から使用。イン点の指定は今後の拡張',
       '',
     ].join('\n');
@@ -620,6 +675,7 @@
       fps: val('h-fps'),
       format: val('h-format'),
       baseUrl,
+      now: new Date(),
       rows,
       bgm,
     };
@@ -627,22 +683,29 @@
 
   const BASE_KEY = 'cuts.nleExport.baseFolder';
 
+  function getNleFolder() {
+    const el = typeof document !== 'undefined' ? document.getElementById('nle-folder') : null;
+    if (el) return String(el.value || '').trim();
+    try { return localStorage.getItem(BASE_KEY) || ''; } catch (_) { return ''; }
+  }
+
+  // Wire the NLE FOLDER input: restore from localStorage, persist on change.
+  function setupNleFolderInput() {
+    const el = document.getElementById('nle-folder');
+    if (!el) return;
+    try { el.value = localStorage.getItem(BASE_KEY) || ''; } catch (_) {}
+    el.addEventListener('change', () => {
+      try { localStorage.setItem(BASE_KEY, String(el.value || '').trim()); } catch (_) {}
+    });
+  }
+
   async function exportForNle() {
     try {
       if (typeof JSZip === 'undefined') {
         alert('JSZip is not available. Please check the network connection or the script tag.');
         return;
       }
-      let remembered = '';
-      try { remembered = localStorage.getItem(BASE_KEY) || ''; } catch (_) {}
-      const answer = window.prompt(
-        'メディアを展開する予定のフォルダの絶対パス（空欄なら相対パスで書き出し、NLE 側で再リンク）\n例: /Users/yuki/Projects/foo または C:\\work\\foo',
-        remembered
-      );
-      if (answer === null) return; // cancelled
-      const baseUrl = String(answer || '').trim();
-      try { localStorage.setItem(BASE_KEY, baseUrl); } catch (_) {}
-
+      const baseUrl = getNleFolder();
       const input = await collectExportInput(baseUrl);
       const model = buildTimelineModel(input);
       if (!model.cuts.length) {
@@ -651,15 +714,16 @@
       }
       const placeholders = assignPlaceholders(model);
 
-      const safeTitle = model.title.replace(/[\\\/:*?"<>|]/g, '_');
       const zip = new JSZip();
-      zip.file(`${safeTitle}.xml`, buildXmeml(model));
-      zip.file(`${safeTitle}.srt`, buildSrt(model));
-      zip.file(`${safeTitle}.otio`, buildOtio(model));
-      zip.file(`${safeTitle}.fcpxml`, buildFcpxml(model));
-      zip.file('README.txt', buildReadme(model));
+      const top = zip.folder(model.exportFolder);
+      top.file(`${model.safeTitle}.xml`, buildXmeml(model));
+      top.file('README.txt', buildReadme(model));
+      const other = top.folder('other_formats');
+      other.file(`${model.safeTitle}.srt`, buildSrt(model));
+      other.file(`${model.safeTitle}.otio`, buildOtio(model));
+      other.file(`${model.safeTitle}.fcpxml`, buildFcpxml(model));
 
-      const assets = zip.folder('assets');
+      const assets = top.folder('assets');
       const used = new Set();
       model.cuts.forEach((c) => { if (c.asset && c.asset.kind !== 'placeholder') used.add(c.asset.assetId); });
       if (model.bgm) used.add(model.bgm.assetId);
@@ -670,14 +734,14 @@
       }
       for (const ph of placeholders) {
         const blob = await renderPlaceholderPng(ph.cut, model.width, model.height);
-        if (blob) zip.file(ph.file, await blob.arrayBuffer());
+        if (blob) top.file(ph.file, await blob.arrayBuffer());
       }
 
       const blob = await zip.generateAsync({ type: 'blob' });
       const u = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = u;
-      a.download = `${safeTitle}_NLE.zip`;
+      a.download = `${model.exportFolder}.zip`;
       a.click();
       setTimeout(() => { try { URL.revokeObjectURL(u); } catch (_) {} }, 500);
 
@@ -697,9 +761,10 @@
     parseFps, parseFormat, toFileUrl,
     buildTimelineModel, assignPlaceholders,
     buildXmeml, buildSrt, buildOtio, buildFcpxml, buildReadme,
-    exportForNle,
+    exportForNle, setupNleFolderInput,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CutsNleExport = api;
   root.exportForNle = exportForNle;
+  root.setupNleFolderInput = setupNleFolderInput;
 })(typeof window !== 'undefined' ? window : globalThis);

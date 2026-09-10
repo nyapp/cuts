@@ -17,7 +17,7 @@
 - **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
 - **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
 - **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
-- **Export NLE** — One ZIP with a Final Cut Pro 7 XML (Premiere Pro / DaVinci Resolve), SRT captions, OpenTimelineIO (.otio) and FCPXML (Final Cut Pro), plus the referenced media. See [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
+- **Export NLE** — One ZIP with a Final Cut Pro 7 XML (Premiere Pro / DaVinci Resolve; cuts on V1, captions on V2 as titles, BGM on A1), the referenced media, and `other_formats/` (OpenTimelineIO, FCPXML, SRT). See [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 No backend, no build step. Static HTML/CSS/JS; runs in any modern browser (Chrome, Edge, Safari recommended).
 
@@ -55,7 +55,7 @@ Recommended: Chrome, Edge, or Safari.
 6. **SAVE ZIP** to download the project (manifest + assets + thumbs).
 7. Use **LOAD ZIP** to restore a saved project.
 8. Use browser **Print → PDF** for a printable timeline sheet.
-9. Use **EXPORT NLE** to hand the timeline to an editor: unzip, import the `.xml` into Premiere Pro (or the `.otio` / `.fcpxml` into Resolve / Final Cut Pro), relink `assets/` if asked, then drop the `.srt` on the sequence for captions. Details and limitations: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
+9. Use **EXPORT NLE** to hand the timeline to an editor. Set **NLE FOLDER** (controls bar) once to the folder where you unzip exports (e.g. `~/Downloads`); then unzip and import the `.xml` into Premiere Pro. Cuts land on V1, captions on V2 as editable titles, BGM on A1, media already linked. `other_formats/` holds `.otio` / `.fcpxml` / `.srt` for Resolve, Final Cut Pro and fallbacks. Details: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 ---
 
