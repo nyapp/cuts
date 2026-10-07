@@ -42,7 +42,8 @@
 
         /* A4 Paper Styling */
         .page {
-            width: 210mm;
+            width: 100%;
+            max-width: 210mm;
             min-height: 297mm;
             padding: 12mm 15mm 15mm 15mm;
             margin: 0 auto;
@@ -601,8 +602,9 @@
             align-items: center;
             gap: 8px;
             margin: 0 auto 10px auto;
-            width: 210mm;
+            width: 100%;
             max-width: 210mm;
+            flex-wrap: wrap;
             padding: 0;
             box-sizing: border-box;
         }
@@ -688,3 +690,291 @@
         /* Hidden file input for click uploads */
         #hidden-image-input { display: none; }
 
+
+
+/* =====================================================================
+   Row actions popup (⋯ menu). position:fixed; JS sets left/top.
+   ===================================================================== */
+.row-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 168px;
+    padding: 4px;
+    background: var(--page-bg);
+    border: 1px solid var(--btn-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+.row-menu-item {
+    display: block;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 12px;
+    text-align: left;
+    font-size: 13px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-color);
+}
+.row-menu-item:hover:not(:disabled) { background: var(--btn-bg); }
+.row-menu-item:disabled { opacity: 0.35; cursor: default; }
+.row-menu-item.is-danger { color: #b00020; }
+.row-menu-sep { height: 1px; margin: 4px 0; background: var(--border-soft); }
+
+/* =====================================================================
+   Touch devices (no hover): no sticky-hover effects, tap-friendly hints
+   ===================================================================== */
+button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
+
+@media screen and (hover: none) {
+    .visual-box.has-image:hover::before,
+    .visual-box.has-image:hover::after,
+    .bgm-box.has-image:hover::before,
+    .bgm-box.has-image:hover::after { content: none; }
+
+    .visual-box:empty::after { content: "Tap to add image / video"; }
+    .bgm-box:empty::after { content: "Tap to add audio"; }
+
+    .controls-left button:hover { text-decoration: none; }
+    .storyboard-table tbody tr:hover td { background: var(--cell-bg); }
+    .storyboard-table tbody tr:hover td:nth-child(1) { background: var(--no-col-bg); }
+    .storyboard-table tbody tr:hover td:nth-child(1) .cut-number { opacity: 1; }
+}
+
+/* =====================================================================
+   Phone layout (screen, <= 640px)
+   - bottom toolbar (thumb reach) holds SAVE / LOAD / EXPORT / ADD SHOT
+   - each cut becomes a card: [No. ⋯ ........ sec] / visual / caption
+   - form controls are 16px so iOS Safari does not zoom on focus
+   ===================================================================== */
+@media screen and (max-width: 640px) {
+    body {
+        padding: 8px 8px calc(84px + env(safe-area-inset-bottom, 0px));
+    }
+    .page {
+        min-height: 0;
+        padding: 12px 10px 16px;
+    }
+    .project-title { font-size: 18px; margin-bottom: 8px; word-break: break-word; }
+
+    /* --- top strip: NLE folder + version --- */
+    .controls { gap: 6px; margin-bottom: 8px; }
+    .nle-folder-wrap {
+        flex: 1 1 100%;
+        margin: 0;
+        order: 1;
+    }
+    .nle-folder-wrap input {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+        font-size: 16px;
+        padding: 8px;
+    }
+    .app-version { order: 2; margin-left: auto; }
+
+    /* --- bottom toolbar --- */
+    .controls-left {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100;
+        gap: 6px;
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+        background: var(--page-bg);
+        border-top: 1px solid var(--border-soft);
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+    }
+    .controls-left .controls-separator { display: none; }
+    .controls-left button {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 44px;
+        padding: 0 4px;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        background: var(--btn-bg);
+        border: 1px solid var(--border-input);
+        border-radius: var(--radius-md);
+    }
+    .controls-left .btn-add {
+        background: var(--text-color);
+        border-color: var(--text-color);
+        color: #fff;
+        font-weight: 600;
+    }
+    /* hide the bar while typing so it does not eat space above the keyboard (progressive: needs :has) */
+    body:has(input:focus, select:focus, .input-audio:focus) .controls-left { display: none; }
+
+    /* --- header block --- */
+    .header-block { padding: 10px; margin-bottom: 12px; }
+    .header-info { flex-direction: column; gap: 10px; margin-bottom: 8px; }
+    .header-meta { margin-left: 0; width: 100%; gap: 12px; }
+    .header-meta .header-item { flex: 1 1 0; min-width: 0; }
+    .header-item input,
+    .header-item select,
+    .header-specs .header-item input,
+    .header-specs .header-item select,
+    .header-meta .header-item input[type="date"] {
+        width: 100%;
+        min-height: 40px;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+    #h-version { width: 100% !important; }
+    .header-specs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 12px;
+        margin-top: 6px;
+    }
+    .header-specs .header-item { min-width: 0; }
+    .spec-platform { order: 1; }
+    .spec-fps { order: 2; }
+    .spec-format { order: 3; }
+    .spec-loudness { order: 4; }
+    .spec-delivery { order: 5; }
+    .spec-wide { grid-column: 1 / -1; }
+
+    /* --- BGM row --- */
+    .header-bgm { flex-wrap: nowrap; align-items: flex-end; gap: 8px; }
+    .header-bgm .header-item { flex: 1 1 0; min-width: 0; }
+    .bgm-box { width: 100%; height: 44px; }
+    .bgm-box:empty::after { line-height: 44px; }
+    .bgm-action { height: 44px; min-width: 56px; }
+
+    /* --- storyboard: table -> cards --- */
+    .page .storyboard-table,
+    .page .storyboard-table tbody { display: block; width: 100%; }
+    .page .storyboard-table thead { display: none; }
+
+    .page .storyboard-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "no  dur"
+            "vis vis"
+            "cap cap";
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 12px;
+        padding: 8px;
+        background: var(--page-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+    }
+    .page .storyboard-table tbody tr > td,
+    .page .storyboard-table tbody tr:hover > td {
+        display: block;
+        position: static;
+        padding: 0;
+        border: none;
+        background: transparent;
+        min-width: 0;
+    }
+
+    /* No. + ⋯ */
+    .page .storyboard-table tbody tr > td:nth-child(1) {
+        grid-area: no;
+        display: flex;
+        align-items: center;
+    }
+    .page .storyboard-table tbody tr > td:nth-child(1) .handle-wrap {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: auto;
+    }
+    .page .storyboard-table tbody tr > td:nth-child(1) .cut-number {
+        width: auto;
+        height: auto;
+        min-width: 28px;
+        padding: 0 6px;
+        font-size: 16px;
+        cursor: default;
+        opacity: 1 !important;
+    }
+    .page .storyboard-table tbody tr > td:nth-child(1) .btn-row-menu {
+        position: static;
+        opacity: 1;
+        pointer-events: auto;
+        min-width: 44px;
+        min-height: 44px;
+        font-size: 22px;
+        line-height: 1;
+        padding: 0;
+        color: var(--text-color);
+    }
+
+    /* Visual */
+    .page .storyboard-table tbody tr > td:nth-child(2) { grid-area: vis; }
+    .page .storyboard-table tbody tr > td:nth-child(2) .visual-box { border-radius: var(--radius-md); }
+    .visual-box:empty::after { font-size: 14px; }
+    .visual-box .file-name { font-size: 11px; }
+    .visual-box .kind-badge { font-size: 11px; }
+
+    /* Caption */
+    .page .storyboard-table tbody tr > td:nth-child(3) { grid-area: cap; }
+    .page .storyboard-table tbody tr > td:nth-child(3) .caption-wrap {
+        position: static;
+        display: block;
+    }
+    .page .storyboard-table tbody tr > td:nth-child(3) .input-audio {
+        min-height: 3.4em;
+        max-height: none;
+        padding: 8px 10px;
+        text-align: left;
+        font-size: 16px;
+        line-height: 1.5;
+        overflow: visible;
+        background: var(--panel-bg-2);
+        border: 1px solid var(--border-soft);
+        border-radius: var(--radius-md);
+    }
+    .page .storyboard-table tbody tr > td:nth-child(3) .input-audio:empty::before {
+        content: "On-screen text / caption";
+        color: var(--placeholder-text);
+    }
+    .page .storyboard-table tbody tr > td:nth-child(3) .input-audio:focus {
+        border-color: var(--focus-border);
+    }
+
+    /* Duration */
+    .page .storyboard-table tbody tr > td:nth-child(4) {
+        grid-area: dur;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .page .storyboard-table tbody tr > td:nth-child(4)::after {
+        content: "sec";
+        font-size: 13px;
+        color: var(--muted-text);
+    }
+    .page .storyboard-table tbody tr > td:nth-child(4) input.input-duration {
+        position: static;
+        transform: none;
+        width: 4.6rem;
+        height: 44px;
+        line-height: 44px;
+        font-size: 16px;
+        text-align: center;
+        background: var(--page-bg);
+        border: 1px solid var(--border-input);
+        border-radius: var(--radius-md);
+    }
+    .page .storyboard-table tbody tr > td:nth-child(4) input.input-duration:focus {
+        border-color: var(--focus-border);
+    }
+}
+
+
+/* =====================================================================
+   Print: keep local-only UI out of the printed sheet
+   ===================================================================== */
+@media print {
+    .nle-folder-wrap { display: none; }
+}

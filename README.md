@@ -17,6 +17,7 @@
 - **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
 - **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
 - **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
+- **Phone-friendly** — At 640 px and below each cut becomes a card (No. / sec, visual, caption), the buttons move to a bottom toolbar, and form fields are 16 px so iOS Safari does not zoom. Tap a visual box to add or replace an image/video; use the ⋯ menu for Move up / Move down / Clear visual / Delete.
 - **Export NLE** — One ZIP with a Final Cut Pro 7 XML (Premiere Pro / DaVinci Resolve; cuts on V1, captions on V2 as titles, BGM on A1), the referenced media, and `other_formats/` (OpenTimelineIO, FCPXML, SRT). See [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 No backend, no build step. Static HTML/CSS/JS; runs in any modern browser (Chrome, Edge, Safari recommended).

@@ -89,6 +89,12 @@ function bootstrapCUTS() {
   if (btnAddShot) {
     btnAddShot.addEventListener('click', () => {
       if (typeof addRow === 'function') addRow();
+      // Phone layout: the new card is below the fold, so bring it into view
+      if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) {
+        const rows = document.querySelectorAll('#storyboard-body tr');
+        const last = rows[rows.length - 1];
+        if (last) last.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
     });
   }
 

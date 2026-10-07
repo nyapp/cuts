@@ -18,13 +18,24 @@ function setupBgmBoxEvents() {
   if (!box) return;
 
   box.addEventListener("dblclick", () => {
+    if (typeof canHover === "function" && !canHover()) return; // touch: single tap handles it
     currentTargetBgmBox = box;
     const input = document.getElementById("hidden-audio-input");
     if (input) input.click();
   });
 
   // Note: hover判定で消す挙動は、現状コードを維持（後で改善可能）
-  box.addEventListener("click", () => {
+  box.addEventListener("click", (e) => {
+    // Touch: :hover sticks after a tap, so a tap must never clear. Tap opens the picker
+    // when empty; the Clear button removes an existing BGM.
+    const isTouch = (e && e.pointerType === "touch") || (typeof canHover === "function" && !canHover());
+    if (isTouch) {
+      currentTargetBgmBox = box;
+      const hasBgm = !!(box.dataset && box.dataset.kind === "audio" && box.dataset.filename);
+      const input = document.getElementById("hidden-audio-input");
+      if (!hasBgm && input) input.click();
+      return;
+    }
     if (box.matches(":hover")) {
       clearBgm();
     } else {

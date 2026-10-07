@@ -519,10 +519,17 @@ function renderImageToBox(file, box) {
   }
 }
 
+// True when the primary input can hover (mouse / trackpad). Phones and tablets: false.
+function canHover() {
+  return !!(window.matchMedia && window.matchMedia("(hover: hover)").matches);
+}
+
 function setupVisualBoxEvents(box) {
   if (!box) return;
 
   box.addEventListener("dblclick", function () {
+    // On touch devices a single tap already opens the picker (see click handler).
+    if (!canHover()) return;
     currentTargetBox = box;
     document.getElementById("hidden-image-input").click();
   });
@@ -545,7 +552,15 @@ function setupVisualBoxEvents(box) {
     if (f) renderImageToBox(f, box);
   });
 
-  box.addEventListener("click", function () {
+  box.addEventListener("click", function (e) {
+    // Touch: :hover sticks after a tap, so never treat a tap as "click the x to clear".
+    // A tap opens the picker (add or replace); clearing lives in the row menu.
+    const isTouch = (e && e.pointerType === "touch") || !canHover();
+    if (isTouch) {
+      currentTargetBox = box;
+      document.getElementById("hidden-image-input").click();
+      return;
+    }
     if (box.matches(":hover")) {
       clearVisualBox(box);
     } else {

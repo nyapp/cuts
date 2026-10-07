@@ -43,16 +43,20 @@ function ensureRowMenu() {
   menu.className = 'row-menu';
   menu.style.display = 'none';
 
-  // Minimal menu: Delete row
+  // Row actions. Move up/down exist because drag & drop reorder is unreliable on touch screens.
   menu.innerHTML = `
-    <button type="button" class="row-menu-item" data-action="delete">Delete row</button>
+    <button type="button" class="row-menu-item" data-action="up">Move up</button>
+    <button type="button" class="row-menu-item" data-action="down">Move down</button>
+    <button type="button" class="row-menu-item" data-action="clear-visual">Clear visual</button>
+    <div class="row-menu-sep"></div>
+    <button type="button" class="row-menu-item is-danger" data-action="delete">Delete row</button>
   `;
 
   document.body.appendChild(menu);
   rowMenuEl = menu;
 
-  // Click outside to close
-  document.addEventListener('mousedown', (e) => {
+  // Click outside to close (pointerdown: iOS Safari does not emit mousedown for taps on non-clickable areas)
+  document.addEventListener('pointerdown', (e) => {
     if (!rowMenuEl || rowMenuEl.style.display === 'none') return;
     const isInsideMenu = rowMenuEl.contains(e.target);
     const isMenuButton = e.target && e.target.closest && e.target.closest('.btn-row-menu');
@@ -66,6 +70,10 @@ function ensureRowMenu() {
     if (e.key === 'Escape') closeRowMenu();
   });
 
+  // The menu is position:fixed; close it when the page scrolls or resizes so it never floats away from its row
+  window.addEventListener('scroll', () => closeRowMenu(), { passive: true });
+  window.addEventListener('resize', () => closeRowMenu());
+
   // Menu item actions
   rowMenuEl.addEventListener('click', (e) => {
     const btn = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
@@ -73,6 +81,25 @@ function ensureRowMenu() {
 
     const action = btn.getAttribute('data-action');
     const row = rowMenuTargetRow;
+
+    if ((action === 'up' || action === 'down') && row) {
+      const sib = action === 'up' ? row.previousElementSibling : row.nextElementSibling;
+      if (sib) {
+        if (action === 'up') row.parentNode.insertBefore(row, sib);
+        else row.parentNode.insertBefore(sib, row);
+        renumberCuts();
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+      closeRowMenu();
+      return;
+    }
+
+    if (action === 'clear-visual' && row) {
+      const box = row.querySelector('.visual-box');
+      if (box && typeof clearVisualBox === 'function') clearVisualBox(box);
+      closeRowMenu();
+      return;
+    }
 
     if (action === 'delete' && row) {
       const ok = e.shiftKey ? true : window.confirm('Delete this row?');
@@ -95,11 +122,32 @@ function openRowMenu(anchorEl, rowEl) {
   const menu = ensureRowMenu();
   rowMenuTargetRow = rowEl;
 
+  // Enable/disable items for this row
+  const rows = Array.from(rowEl.parentNode.children);
+  const idx = rows.indexOf(rowEl);
+  const box = rowEl.querySelector('.visual-box');
+  const setDisabled = (action, disabled) => {
+    const b = menu.querySelector(`[data-action="${action}"]`);
+    if (b) b.disabled = !!disabled;
+  };
+  setDisabled('up', idx <= 0);
+  setDisabled('down', idx === rows.length - 1);
+  setDisabled('clear-visual', !(box && box.dataset && box.dataset.assetId));
+
+  // Place menu under the button, then clamp inside the viewport (flip above if no room below)
   const r = anchorEl.getBoundingClientRect();
-  // Place menu under the button, aligned to its left edge
-  menu.style.left = `${Math.round(r.left)}px`;
-  menu.style.top = `${Math.round(r.bottom + 6)}px`;
+  menu.style.visibility = 'hidden';
   menu.style.display = 'block';
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
+  const margin = 8;
+  let left = Math.min(r.left, window.innerWidth - mw - margin);
+  left = Math.max(margin, left);
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - margin) top = Math.max(margin, r.top - mh - 6);
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.top = `${Math.round(top)}px`;
+  menu.style.visibility = 'visible';
 }
 
 function closeRowMenu() {
@@ -178,8 +226,8 @@ function addRow(data = null) {
     };
 
     menuBtn.addEventListener('pointerdown', (e) => {
-      // Primary pointer only
-      if (e.button !== 0) return;
+      // Primary pointer only; touch uses Move up/down in the menu instead of long-press drag
+      if (e.button !== 0 || e.pointerType === 'touch') return;
       clearPress();
 
       // If user holds, enable dragging on this button
