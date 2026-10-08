@@ -19,6 +19,10 @@ let draggingRow = null;
 let dropIndicatorRow = null;
 
 function renumberCuts() {
+  // Any other reorder/delete invalidates the "undo sort" snapshot (the sort itself is exempt)
+  if (window.CutsCaptureSort && typeof window.CutsCaptureSort.clearSortUndo === 'function') {
+    window.CutsCaptureSort.clearSortUndo();
+  }
   const rows = document.querySelectorAll('#storyboard-body tr');
   rows.forEach((row, idx) => {
     const no = row.querySelector('.cut-number');

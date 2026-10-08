@@ -693,6 +693,32 @@
 
 
 /* =====================================================================
+   Storyboard toolbar (sort by capture time)
+   ===================================================================== */
+.storyboard-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin: 0 0 8px;
+}
+.btn-sort {
+    padding: 5px 10px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+}
+.btn-sort:disabled { opacity: 0.5; cursor: default; }
+.sort-status {
+    font-size: 12px;
+    color: var(--muted-text);
+}
+.sort-undo {
+    margin-left: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+/* =====================================================================
    Row actions popup (⋯ menu). position:fixed; JS sets left/top.
    ===================================================================== */
 .row-menu {
@@ -846,6 +872,11 @@ button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
     .bgm-box:empty::after { line-height: 44px; }
     .bgm-action { height: 44px; min-width: 56px; }
 
+    /* --- sort toolbar --- */
+    .storyboard-toolbar { flex-direction: column; align-items: stretch; gap: 6px; }
+    .btn-sort { min-height: 44px; font-size: 12px; }
+    .sort-undo { min-height: 36px; padding: 0 12px; }
+
     /* --- storyboard: table -> cards --- */
     .page .storyboard-table,
     .page .storyboard-table tbody { display: block; width: 100%; }
@@ -976,5 +1007,6 @@ button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
    Print: keep local-only UI out of the printed sheet
    ===================================================================== */
 @media print {
-    .nle-folder-wrap { display: none; }
+    .nle-folder-wrap,
+    .storyboard-toolbar { display: none; }
 }

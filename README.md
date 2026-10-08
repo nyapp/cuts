@@ -17,6 +17,7 @@
 - **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
 - **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
 - **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
+- **Sort by capture time** — One button reorders the cuts by when each image / video was captured (photo EXIF, video metadata). Cuts without a time go to the end; one tap undoes it. See [Sort by capture time](#sort-by-capture-time).
 - **Phone-friendly** — At 640 px and below each cut becomes a card (No. / sec, visual, caption), the buttons move to a bottom toolbar, and form fields are 16 px so iOS Safari does not zoom. Tap a visual box to add or replace an image/video; use the ⋯ menu for Move up / Move down / Clear visual / Delete.
 - **Export NLE** — One ZIP with a Final Cut Pro 7 XML (Premiere Pro / DaVinci Resolve; cuts on V1, captions on V2 as titles, BGM on A1), the referenced media, and `other_formats/` (OpenTimelineIO, FCPXML, SRT). See [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
@@ -56,7 +57,8 @@ Recommended: Chrome, Edge, or Safari.
 6. **SAVE ZIP** to download the project (manifest + assets + thumbs).
 7. Use **LOAD ZIP** to restore a saved project.
 8. Use browser **Print → PDF** for a printable timeline sheet.
-9. Use **EXPORT NLE** to hand the timeline to an editor. Set **NLE FOLDER** (controls bar) once to the folder where you unzip exports (e.g. `~/Downloads`); then unzip and import the `.xml` into Premiere Pro. Cuts land on V1, captions on V2 as editable titles, BGM on A1, media already linked. `other_formats/` holds `.otio` / `.fcpxml` / `.srt` for Resolve, Final Cut Pro and fallbacks. Details: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
+9. Optionally press **SORT BY CAPTURE TIME** above the table to put the cuts in shooting order.
+10. Use **EXPORT NLE** to hand the timeline to an editor. Set **NLE FOLDER** (controls bar) once to the folder where you unzip exports (e.g. `~/Downloads`); then unzip and import the `.xml` into Premiere Pro. Cuts land on V1, captions on V2 as editable titles, BGM on A1, media already linked. `other_formats/` holds `.otio` / `.fcpxml` / `.srt` for Resolve, Final Cut Pro and fallbacks. Details: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 ---
 
@@ -118,12 +120,25 @@ python scripts/build_mock_video.py project.zip
 | **Presentation** | `index.html`, `css/screen.css` | Structure and styles |
 | **Application** | `js/01_bootstrap.js`, `js/40_rows.js`, `js/50_timeline.js` | Entry, rows, timing |
 | **Assets & I/O** | `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
+| **Capture sort** | `js/45_capture_sort.js`, `scripts/capture_sort_smoke.js` | EXIF / MP4 capture-time readers, ordering, undo; Node smoke test |
 | **NLE export** | `js/80_nle_export.js`, `scripts/nle_export_smoke.js` | FCP7 XML / SRT / OTIO / FCPXML serializers + export ZIP; Node smoke test |
 | **Utilities** | `js/00_version.js`, `js/02_sanity_check.js`, `js/05_state.js`, `js/10_dom.js`, `js/60_keyboard_ime.js` | App version, startup check, state, DOM helpers, IME/keyboard |
 
 JSZip is loaded from CDN in `index.html`; no package manager required for the web app.
 
 ---
+
+## Sort by capture time
+
+**SORT BY CAPTURE TIME** (above the table) orders the cuts from earliest to latest. Where the time comes from, in order:
+
+| Visual | Source |
+|---|---|
+| Photo (JPEG, HEIC, PNG, WebP, TIFF) | EXIF DateTimeOriginal (then DateTimeDigitized, then DateTime), with the recorded UTC offset when present |
+| Video (MP4, MOV, M4V, 3GP) | Creation time in the file header (`mvhd`); only the header is read, so large files are fine |
+| Anything else | The file's modified time, but only for files that existed before the page was opened (files restored from a ZIP are skipped because their modified time is "now") |
+
+Rules: ties keep the current order; cuts with no time (no visual, screenshots, stripped metadata) keep their relative order at the end. A status line shows how many cuts used each source, and **元に戻す** restores the previous order until you reorder, delete or sort again. Photos without a recorded UTC offset are read as this device's local time, so a shoot in another time zone sorts correctly among photos but can be off against videos (which are UTC). Test: `TZ=Asia/Tokyo node scripts/capture_sort_smoke.js`.
 
 ## App Version
 

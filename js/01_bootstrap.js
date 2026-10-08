@@ -120,6 +120,7 @@ function bootstrapCUTS() {
   if (typeof setupBgmBoxEvents === 'function') setupBgmBoxEvents();
   if (typeof setupBgmActionButton === 'function') setupBgmActionButton();
   if (typeof setupNleFolderInput === 'function') setupNleFolderInput();
+  if (typeof setupCaptureSort === 'function') setupCaptureSort();
 
   setupProjectTitleSync();
   applyInitialDefaultsIfEmpty();
