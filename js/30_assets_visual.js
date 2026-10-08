@@ -85,8 +85,72 @@ function clearVisualBox(box) {
 }
 
 // 画像/動画ファイルを読み込んでボックスに表示（ファイル名も表示）
-function renderImageToBox(file, box) {
+// Build the on-screen thumbnail (max edge 1280px) so importing many large photos does not exhaust
+// memory (a raw data URL of a 12MP photo is ~16MB of string). Falls back to the original file's data
+// URL when the image cannot be decoded here (e.g. HEIC outside Safari) or must stay as-is (GIF, SVG).
+function makeImageThumbDataUrl(file) {
+  return new Promise((resolve) => {
+    const fallback = () => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ""));
+      r.onerror = () => resolve("");
+      r.readAsDataURL(file);
+    };
+    const type = String(file.type || "");
+    if (type === "image/gif" || type === "image/svg+xml") return fallback();
+
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    const release = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {}
+    };
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (!w || !h) throw new Error("no size");
+        const scale = Math.min(1, 1280 / Math.max(w, h));
+        if (scale === 1 && file.size < 400 * 1024) {
+          release();
+          return fallback(); // already small: keep the original bytes
+        }
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(w * scale));
+        c.height = Math.max(1, Math.round(h * scale));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const keepAlpha = type === "image/png" || type === "image/webp" || type === "image/avif";
+        const out = c.toDataURL(keepAlpha ? "image/png" : "image/jpeg", 0.88);
+        release();
+        resolve(out);
+      } catch (_) {
+        release();
+        fallback();
+      }
+    };
+    img.onerror = () => {
+      release();
+      fallback();
+    };
+    img.src = url;
+  });
+}
+
+// onDone (optional) is called once when the thumbnail / metadata work for this file has finished.
+function renderImageToBox(file, box, onDone) {
   if (!file || !box) return;
+
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    if (typeof onDone === "function") {
+      try {
+        onDone();
+      } catch (_) {}
+    }
+  };
 
   const oldAssetId = box.dataset.assetId;
   if (oldAssetId) assetStore.delete(oldAssetId);
@@ -114,17 +178,20 @@ function renderImageToBox(file, box) {
 
   // --- Image ---
   if (isImage) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const safeName = escapeHtml(fileName);
-      box.classList.add("has-image");
-      box.innerHTML = `
-        <div class="kind-badge">IMG</div>
-        <img src="${e.target.result}" alt="${safeName}">
-        <div class="file-name" title="${safeName}">${safeName}</div>
-      `;
-    };
-    reader.readAsDataURL(file);
+    const myAssetId = box.dataset.assetId;
+    makeImageThumbDataUrl(file).then((dataUrl) => {
+      // The box may have been cleared or given another file while the thumbnail was being made
+      if (box.dataset.assetId === myAssetId) {
+        const safeName = escapeHtml(fileName);
+        box.classList.add("has-image");
+        box.innerHTML = `
+          <div class="kind-badge">IMG</div>
+          <img src="${dataUrl}" alt="${safeName}">
+          <div class="file-name" title="${safeName}">${safeName}</div>
+        `;
+      }
+      finish();
+    });
     return;
   }
 
@@ -165,6 +232,7 @@ function renderImageToBox(file, box) {
       try {
         video.remove();
       } catch (_) {}
+      finish();
     };
 
     let captured = false;
@@ -517,6 +585,8 @@ function renderImageToBox(file, box) {
 
     return;
   }
+
+  finish(); // neither image nor video
 }
 
 // True when the primary input can hover (mouse / trackpad). Phones and tablets: false.
@@ -545,11 +615,13 @@ function setupVisualBoxEvents(box) {
   box.addEventListener("drop", function (e) {
     e.preventDefault();
     box.classList.remove("drag-over");
-    const f =
-      e.dataTransfer.files && e.dataTransfer.files[0]
-        ? e.dataTransfer.files[0]
-        : null;
-    if (f) renderImageToBox(f, box);
+    const files = e.dataTransfer && e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+    if (files.length > 1 && typeof bulkImportFiles === "function") {
+      // first file fills this cut, the rest become new cuts right after it
+      bulkImportFiles(files, { intoBox: box });
+    } else if (files[0]) {
+      renderImageToBox(files[0], box);
+    }
   });
 
   box.addEventListener("click", function (e) {

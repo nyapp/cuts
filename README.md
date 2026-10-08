@@ -17,6 +17,7 @@
 - **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
 - **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
 - **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
+- **Bulk import** — **IMPORT MEDIA** takes many photos / videos at once (phones: the photo library picker), one cut per file. You can also drop files anywhere on the page. See [Bulk import](#bulk-import).
 - **Sort by capture time** — One button reorders the cuts by when each image / video was captured (photo EXIF, video metadata). Cuts without a time go to the end; one tap undoes it. See [Sort by capture time](#sort-by-capture-time).
 - **Phone-friendly** — At 640 px and below each cut becomes a card (No. / sec, visual, caption), the buttons move to a bottom toolbar, and form fields are 16 px so iOS Safari does not zoom. Tap a visual box to add or replace an image/video; use the ⋯ menu for Move up / Move down / Clear visual / Delete.
 - **Export NLE** — One ZIP with a Final Cut Pro 7 XML (Premiere Pro / DaVinci Resolve; cuts on V1, captions on V2 as titles, BGM on A1), the referenced media, and `other_formats/` (OpenTimelineIO, FCPXML, SRT). See [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
@@ -57,7 +58,7 @@ Recommended: Chrome, Edge, or Safari.
 6. **SAVE ZIP** to download the project (manifest + assets + thumbs).
 7. Use **LOAD ZIP** to restore a saved project.
 8. Use browser **Print → PDF** for a printable timeline sheet.
-9. Optionally press **SORT BY CAPTURE TIME** above the table to put the cuts in shooting order.
+9. Import many photos / videos at once with **IMPORT MEDIA** (or drop them on the page), then optionally press **SORT BY CAPTURE TIME** above the table to put the cuts in shooting order.
 10. Use **EXPORT NLE** to hand the timeline to an editor. Set **NLE FOLDER** (controls bar) once to the folder where you unzip exports (e.g. `~/Downloads`); then unzip and import the `.xml` into Premiere Pro. Cuts land on V1, captions on V2 as editable titles, BGM on A1, media already linked. `other_formats/` holds `.otio` / `.fcpxml` / `.srt` for Resolve, Final Cut Pro and fallbacks. Details: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 ---
@@ -120,6 +121,7 @@ python scripts/build_mock_video.py project.zip
 | **Presentation** | `index.html`, `css/screen.css` | Structure and styles |
 | **Application** | `js/01_bootstrap.js`, `js/40_rows.js`, `js/50_timeline.js` | Entry, rows, timing |
 | **Assets & I/O** | `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
+| **Bulk import** | `js/46_bulk_import.js`, `scripts/bulk_import_smoke.js` | Multi-file picker / page drop, row placement, throttled thumbnails |
 | **Capture sort** | `js/45_capture_sort.js`, `scripts/capture_sort_smoke.js` | EXIF / MP4 capture-time readers, ordering, undo; Node smoke test |
 | **NLE export** | `js/80_nle_export.js`, `scripts/nle_export_smoke.js` | FCP7 XML / SRT / OTIO / FCPXML serializers + export ZIP; Node smoke test |
 | **Utilities** | `js/00_version.js`, `js/02_sanity_check.js`, `js/05_state.js`, `js/10_dom.js`, `js/60_keyboard_ime.js` | App version, startup check, state, DOM helpers, IME/keyboard |
@@ -127,6 +129,17 @@ python scripts/build_mock_video.py project.zip
 JSZip is loaded from CDN in `index.html`; no package manager required for the web app.
 
 ---
+
+## Bulk import
+
+**IMPORT MEDIA** (above the table) opens a multi-select picker; every photo / video becomes one cut. Dropping files on the page does the same.
+
+- **Placement**: empty cuts (no visual and no caption) are filled from the top, the rest are appended. Files keep the order the picker or drop provides; the status line then offers **撮影日時順に並べる**.
+- **Drop on one cut**: with several files dropped on a cut's visual box, the first fills that cut and the others become new cuts right after it. One file still just replaces that cut's visual.
+- **Skipped**: anything that is not a photo / video (audio, documents) is skipped and counted in the status line. Files with no MIME type (HEIC, MOV on some desktop browsers) are recognized by extension.
+- **Memory**: photos are shown as thumbnails of at most 1280 px, so dozens of 12-megapixel photos stay light. The originals are untouched in the project ZIP, and `thumbs/` in the ZIP is now a real small JPEG instead of a copy of the original. Thumbnails are made 3 at a time; a file that cannot be decoded within 12 s is left as a name-only cut.
+- Video durations behave as before: a cut's seconds default to the clip length minus 2 s (images: 5 s).
+- Test: `node scripts/bulk_import_smoke.js`.
 
 ## Sort by capture time
 

@@ -121,6 +121,7 @@ function bootstrapCUTS() {
   if (typeof setupBgmActionButton === 'function') setupBgmActionButton();
   if (typeof setupNleFolderInput === 'function') setupNleFolderInput();
   if (typeof setupCaptureSort === 'function') setupCaptureSort();
+  if (typeof setupBulkImport === 'function') setupBulkImport();
 
   setupProjectTitleSync();
   applyInitialDefaultsIfEmpty();
