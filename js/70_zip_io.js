@@ -2,7 +2,8 @@
 // ZIP export/import (manifest.json + assets + thumbs)
 //
 // Depends on globals defined elsewhere:
-// - JSZip (loaded via CDN)
+// - createZipBlob / openZipLazy / downloadBlob / setBusyStatus / formatBytes (js/12_zip_store.js)
+// - JSZip (loaded via CDN): only used as a fallback to read compressed ZIPs from other tools
 // - helper funcs: val, escapeHtml, sanitizeFilename, dataUrlToUint8Array, blobToDataUrl
 // - app funcs: addRow, recalcStartTimes, renumberCuts, updateProjectTitleDisplay
 // - bgm funcs: clearBgm, updateBgmActionButton
@@ -96,24 +97,8 @@ async function saveProjectZip() {
       manifest.rows.push(item);
     });
 
-    // Create ZIP
-    if (typeof JSZip === "undefined") {
-      alert("JSZip is not available. Please check the network connection or the script tag.");
-      return;
-    }
-
-    const zip = new JSZip();
-    zip.file("manifest.json", JSON.stringify(manifest, null, 2));
-
-    // Explicitly create folders and verify they exist
-    const assetsFolder = zip.folder("assets");
-    const thumbsFolder = zip.folder("thumbs");
-    
-    if (!assetsFolder || !thumbsFolder) {
-      console.error("Failed to create folders in ZIP");
-      alert("Failed to create folder structure in ZIP.");
-      return;
-    }
+    // Build the ZIP without loading media into memory (see js/12_zip_store.js).
+    const entries = [{ name: "manifest.json", data: JSON.stringify(manifest, null, 2) }];
 
     // Add original asset files that were selected during this session
     const usedAssetIds = new Set();
@@ -125,9 +110,7 @@ async function saveProjectZip() {
     for (const [assetId, file] of assetStore.entries()) {
       if (usedAssetIds.has(assetId)) {
         const rawName = file.name || "asset";
-        const zipName = `${assetId}_${sanitizeFilename(rawName)}`;
-        const buf = await file.arrayBuffer();
-        assetsFolder.file(zipName, buf);
+        entries.push({ name: `assets/${assetId}_${sanitizeFilename(rawName)}`, data: file });
       }
     }
 
@@ -138,23 +121,18 @@ async function saveProjectZip() {
       if (!assetId || !img || !img.src || !String(img.src).startsWith("data:")) return;
       const u = dataUrlToUint8Array(img.src);
       if (!u) return;
-      thumbsFolder.file(`${assetId}.jpg`, u.bytes);
+      entries.push({ name: `thumbs/${assetId}.jpg`, data: u.bytes });
     });
 
-    // Build and download
-    const blob = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${safeTitle}_v${version}.zip`;
-    a.click();
-    setTimeout(() => {
-      try {
-        URL.revokeObjectURL(url);
-      } catch (_) {}
-    }, 500);
+    setBusyStatus("ZIP を作成中…");
+    const blob = await createZipBlob(entries, {
+      onProgress: (done, total) => setBusyStatus(`ZIP を作成中… ${done} / ${total}`),
+    });
+    downloadBlob(blob, `${safeTitle}_v${version}.zip`);
+    setBusyStatus(`保存しました（${formatBytes(blob.size)}）`);
   } catch (err) {
     console.error(err);
+    setBusyStatus("");
     alert("Failed to export ZIP.");
   }
 }
@@ -164,15 +142,26 @@ async function loadProjectZip(input) {
   const file = input && input.files ? input.files[0] : null;
   if (!file) return;
 
-  if (typeof JSZip === "undefined") {
-    alert("JSZip is not available. Please check the network connection or the script tag.");
-    input.value = "";
-    return;
-  }
-
   try {
-    const buf = await file.arrayBuffer();
-    const zip = await JSZip.loadAsync(buf);
+    // Preferred: lazy reader for plain (STORE) project ZIPs; media are slices of the ZIP file, nothing is
+    // loaded into memory. Compressed ZIPs from other tools fall back to JSZip.
+    let zip = null;
+    if (typeof openZipLazy === "function") {
+      try {
+        zip = await openZipLazy(file);
+      } catch (_) {
+        zip = null;
+      }
+    }
+    if (!zip) {
+      if (typeof JSZip === "undefined") {
+        alert("JSZip is not available. Please check the network connection or the script tag.");
+        input.value = "";
+        return;
+      }
+      const buf = await file.arrayBuffer();
+      zip = await JSZip.loadAsync(buf);
+    }
 
     // --- Read manifest ---
     const manifestEntry = zip.file("manifest.json");

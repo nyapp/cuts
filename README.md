@@ -73,6 +73,18 @@ A saved project is a ZIP containing:
 
 Suitable for version control (binary assets) or long-term storage; load back via **LOAD ZIP**.
 
+### Large projects (many clips)
+
+SAVE ZIP, LOAD ZIP and EXPORT NLE do not load media into memory. ZIPs are written uncompressed (media are already compressed) as headers around references to your original files (`js/12_zip_store.js`), and LOAD ZIP reads only the index and uses slices of the ZIP file. Measured in Chromium with 60 three-second clips:
+
+| Project size | Before (JSZip) | Now |
+|---|---|---|
+| 449 MB, SAVE ZIP | +1.7 GB browser memory, 15 s | +70 MB, 4 s |
+| 2.1 GB, SAVE ZIP / EXPORT NLE | would need ~8 GB | +90 MB, 20 s (most of it the browser writing the download) |
+| 449 MB, LOAD ZIP | whole ZIP read into memory | +30 MB, 1 s |
+
+Notes: keep the original files in place until the download finishes (the ZIP is built from references to them). ZIPs from other tools (compressed) still load through JSZip, which is memory-heavy. ZIP64 is written automatically above 4 GB. Test: `node scripts/zip_store_smoke.js`.
+
 ---
 
 ## Video Mock (Python)
@@ -120,7 +132,7 @@ python scripts/build_mock_video.py project.zip
 |-------|--------|------|
 | **Presentation** | `index.html`, `css/screen.css` | Structure and styles |
 | **Application** | `js/01_bootstrap.js`, `js/40_rows.js`, `js/50_timeline.js` | Entry, rows, timing |
-| **Assets & I/O** | `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
+| **Assets & I/O** | `js/12_zip_store.js`, `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
 | **Bulk import** | `js/46_bulk_import.js`, `scripts/bulk_import_smoke.js` | Multi-file picker / page drop, row placement, throttled thumbnails |
 | **Capture sort** | `js/45_capture_sort.js`, `scripts/capture_sort_smoke.js` | EXIF / MP4 capture-time readers, ordering, undo; Node smoke test |
 | **NLE export** | `js/80_nle_export.js`, `scripts/nle_export_smoke.js` | FCP7 XML / SRT / OTIO / FCPXML serializers + export ZIP; Node smoke test |
@@ -137,7 +149,7 @@ JSZip is loaded from CDN in `index.html`; no package manager required for the we
 - **Placement**: empty cuts (no visual and no caption) are filled from the top, the rest are appended. Files keep the order the picker or drop provides; the status line then offers **撮影日時順に並べる**.
 - **Drop on one cut**: with several files dropped on a cut's visual box, the first fills that cut and the others become new cuts right after it. One file still just replaces that cut's visual.
 - **Skipped**: anything that is not a photo / video (audio, documents) is skipped and counted in the status line. Files with no MIME type (HEIC, MOV on some desktop browsers) are recognized by extension.
-- **Memory**: photos are shown as thumbnails of at most 1280 px, so dozens of 12-megapixel photos stay light. The originals are untouched in the project ZIP, and `thumbs/` in the ZIP is now a real small JPEG instead of a copy of the original. Thumbnails are made 3 at a time; a file that cannot be decoded within 12 s is left as a name-only cut.
+- **Memory**: video thumbnails are capped at 640 px and photos at 1280 px (iOS Safari limits total canvas memory, which made large batches fail); photos are shown as thumbnails of at most 1280 px, so dozens of 12-megapixel photos stay light. The originals are untouched in the project ZIP, and `thumbs/` in the ZIP is now a real small JPEG instead of a copy of the original. Thumbnails are made 3 at a time; a file that cannot be decoded within 12 s is left as a name-only cut.
 - Video durations behave as before: a cut's seconds default to the clip length minus 2 s (images: 5 s).
 - Test: `node scripts/bulk_import_smoke.js`.
 

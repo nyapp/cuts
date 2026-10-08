@@ -122,6 +122,7 @@ function makeImageThumbDataUrl(file) {
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         const keepAlpha = type === "image/png" || type === "image/webp" || type === "image/avif";
         const out = c.toDataURL(keepAlpha ? "image/png" : "image/jpeg", 0.88);
+        c.width = c.height = 0; // release canvas memory right away
         release();
         resolve(out);
       } catch (_) {
@@ -308,18 +309,27 @@ function renderImageToBox(file, box, onDone) {
         await seekTo(timeSec);
         await waitForFrame();
 
+        // Thumbnails are capped at 640px: a 4K canvas is ~33 MB and iOS Safari caps total canvas memory,
+        // which made large batches of clips fail. The canvas is released right after use.
         const canvas = document.createElement("canvas");
         const vw = video.videoWidth || 160;
         const vh = video.videoHeight || 90;
-        canvas.width = vw;
-        canvas.height = vh;
+        const scale = Math.min(1, 640 / Math.max(vw, vh));
+        const cw = Math.max(1, Math.round(vw * scale));
+        const ch = Math.max(1, Math.round(vh * scale));
+        canvas.width = cw;
+        canvas.height = ch;
 
         const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, vw, vh);
+        ctx.drawImage(video, 0, 0, cw, ch);
 
-        if (isTooDark(ctx, vw, vh)) return false;
+        if (isTooDark(ctx, cw, ch)) {
+          canvas.width = canvas.height = 0;
+          return false;
+        }
 
         const thumbDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        canvas.width = canvas.height = 0;
 
         captured = true;
         box.classList.add("has-image");

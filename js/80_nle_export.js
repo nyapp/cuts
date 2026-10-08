@@ -20,7 +20,7 @@
 // unit-tested in Node (see scripts/nle_export_smoke.js). Browser-only code
 // (DOM access, media probing, canvas placeholders, JSZip) lives in exportForNle().
 //
-// Depends on globals when run in the browser: JSZip, val, sanitizeFilename, assetStore.
+// Depends on globals when run in the browser: createZipBlob / downloadBlob / setBusyStatus (js/12_zip_store.js), val, sanitizeFilename, assetStore.
 
 (function (root) {
   'use strict';
@@ -701,10 +701,6 @@
 
   async function exportForNle() {
     try {
-      if (typeof JSZip === 'undefined') {
-        alert('JSZip is not available. Please check the network connection or the script tag.');
-        return;
-      }
       const baseUrl = getNleFolder();
       const input = await collectExportInput(baseUrl);
       const model = buildTimelineModel(input);
@@ -714,42 +710,41 @@
       }
       const placeholders = assignPlaceholders(model);
 
-      const zip = new JSZip();
-      const top = zip.folder(model.exportFolder);
-      top.file(`${model.safeTitle}.xml`, buildXmeml(model));
-      top.file('README.txt', buildReadme(model));
-      const other = top.folder('other_formats');
-      other.file(`${model.safeTitle}.srt`, buildSrt(model));
-      other.file(`${model.safeTitle}.otio`, buildOtio(model));
-      other.file(`${model.safeTitle}.fcpxml`, buildFcpxml(model));
+      // Build the ZIP without loading media into memory (see js/12_zip_store.js).
+      const top = model.exportFolder;
+      const entries = [
+        { name: `${top}/${model.safeTitle}.xml`, data: buildXmeml(model) },
+        { name: `${top}/README.txt`, data: buildReadme(model) },
+        { name: `${top}/other_formats/${model.safeTitle}.srt`, data: buildSrt(model) },
+        { name: `${top}/other_formats/${model.safeTitle}.otio`, data: buildOtio(model) },
+        { name: `${top}/other_formats/${model.safeTitle}.fcpxml`, data: buildFcpxml(model) },
+      ];
 
-      const assets = top.folder('assets');
       const used = new Set();
       model.cuts.forEach((c) => { if (c.asset && c.asset.kind !== 'placeholder') used.add(c.asset.assetId); });
       if (model.bgm) used.add(model.bgm.assetId);
       for (const [assetId, file] of assetStore.entries()) {
         if (!used.has(assetId)) continue;
-        const zipName = `${assetId}_${sanitizeFilename(file.name || 'asset')}`;
-        assets.file(zipName, await file.arrayBuffer());
+        entries.push({ name: `${top}/assets/${assetId}_${sanitizeFilename(file.name || 'asset')}`, data: file });
       }
       for (const ph of placeholders) {
         const blob = await renderPlaceholderPng(ph.cut, model.width, model.height);
-        if (blob) top.file(ph.file, await blob.arrayBuffer());
+        if (blob) entries.push({ name: `${top}/${ph.file}`, data: blob });
       }
 
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const u = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = u;
-      a.download = `${model.exportFolder}.zip`;
-      a.click();
-      setTimeout(() => { try { URL.revokeObjectURL(u); } catch (_) {} }, 500);
+      setBusyStatus('NLE 用 ZIP を作成中…');
+      const blob = await createZipBlob(entries, {
+        onProgress: (done, total) => setBusyStatus(`NLE 用 ZIP を作成中… ${done} / ${total}`),
+      });
+      downloadBlob(blob, `${model.exportFolder}.zip`);
+      setBusyStatus(`書き出しました（${formatBytes(blob.size)}）`);
 
       if (model.warnings.length) {
         alert('書き出しました。注意:\n- ' + model.warnings.join('\n- '));
       }
     } catch (err) {
       console.error(err);
+      setBusyStatus('');
       alert('Failed to export for NLE.');
     }
   }

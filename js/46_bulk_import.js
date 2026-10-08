@@ -26,7 +26,8 @@
     mov: 'video/quicktime', mp4: 'video/mp4', m4v: 'video/x-m4v', webm: 'video/webm',
     '3gp': 'video/3gpp', '3g2': 'video/3gpp2',
   };
-  const POOL_SIZE = 3;          // thumbnails generated at the same time
+  const POOL_IMAGES = 3;        // thumbnails generated at the same time (desktop, or photos only)
+  const POOL_WITH_VIDEO = 2;    // touch devices decode only a few videos at once
   const PER_FILE_TIMEOUT = 12000; // ms; a stuck decode must not block the rest
 
   // -> { file, kind: 'image' | 'video' } or null (not a photo / video).
@@ -156,7 +157,9 @@
       const total = targets.length;
       setStatus(`取り込み中… 0 / ${total}`);
       const tasks = targets.map((t) => () => loadOne(t.file, t.row.querySelector('.visual-box')));
-      await runPool(tasks, POOL_SIZE, (done) => setStatus(`取り込み中… ${done} / ${total}`));
+      const touch = typeof canHover === 'function' && !canHover();
+      const pool = media.some((m) => m.kind === 'video') && touch ? POOL_WITH_VIDEO : POOL_IMAGES;
+      await runPool(tasks, pool, (done) => setStatus(`取り込み中… ${done} / ${total}`));
       renumberCuts();
 
       const first = targets[0].row;
