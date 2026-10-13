@@ -59,7 +59,7 @@ Recommended: Chrome, Edge, or Safari.
 7. Use **LOAD ZIP** to restore a saved project.
 8. Use browser **Print → PDF** for a printable timeline sheet.
 9. Import many photos / videos at once with **IMPORT MEDIA** (or drop them on the page), then optionally press **SORT BY CAPTURE TIME** above the table to put the cuts in shooting order.
-10. Use **EXPORT NLE** to hand the timeline to an editor. Set **NLE FOLDER** (controls bar) once to the folder where you unzip exports (e.g. `~/Downloads`); then unzip and import the `.xml` into Premiere Pro. Cuts land on V1, captions on V2 as editable titles, BGM on A1, media already linked. `other_formats/` holds `.otio` / `.fcpxml` / `.srt` for Resolve, Final Cut Pro and fallbacks. Details: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
+10. Use **EXPORT NLE** to hand the timeline to an editor. **NLE FOLDER** (controls bar) is the folder where you unzip exports; on macOS it defaults to iCloud Drive's `CUTS` folder (`/Users/<you>/Library/Mobile Documents/com~apple~CloudDocs/CUTS`; your Mac user name is asked once at the first export). Browsers cannot create folders, so the **MKDIR** button copies `mkdir -p '<folder>'` for Terminal (a no-op if it exists). Unzip into that folder, then import the `.xml` into Premiere Pro. Cuts land on V1, captions on V2 as editable titles, BGM on A1, media already linked. `other_formats/` holds `.otio` / `.fcpxml` / `.srt` for Resolve, Final Cut Pro and fallbacks. Details: [docs/NLE_EXPORT.md](docs/NLE_EXPORT.md).
 
 ---
 

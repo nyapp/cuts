@@ -661,7 +661,8 @@
             margin-right: 12px;
         }
         .nle-folder-wrap input {
-            width: 220px;
+            width: 150px;
+            text-overflow: ellipsis;
             font-size: 11px;
             padding: 3px 6px;
             border: 1px solid var(--btn-border);
@@ -713,6 +714,11 @@
     color: var(--muted-text);
 }
 .sort-status:empty { display: none; }
+.btn-mini {
+    padding: 3px 8px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+}
 
 /* Banner shown while files are dragged over the page */
 .drop-banner {
@@ -784,6 +790,7 @@ button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
     .bgm-box:empty::after { content: "Tap to add audio"; }
 
     .controls-left button:hover { text-decoration: none; }
+    #btn-nle-mkdir { display: none; } /* Terminal helper: not useful on touch devices */
     .storyboard-table tbody tr:hover td { background: var(--cell-bg); }
     .storyboard-table tbody tr:hover td:nth-child(1) { background: var(--no-col-bg); }
     .storyboard-table tbody tr:hover td:nth-child(1) .cut-number { opacity: 1; }

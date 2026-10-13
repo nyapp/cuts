@@ -49,3 +49,19 @@ for (const [name, text] of Object.entries(files)) {
   fs.writeFileSync(path.join(outDir, name), text);
 }
 console.log('wrote', Object.keys(files).join(', '), '->', outDir);
+
+// ---- NLE FOLDER helpers (default iCloud Drive/CUTS, user-name fill, mkdir command) ----
+{
+  const assert = require('assert');
+  assert.strictEqual(nle.DEFAULT_NLE_FOLDER, '/Users/【ユーザー名】/Library/Mobile Documents/com~apple~CloudDocs/CUTS');
+  assert.strictEqual(nle.expandHome(nle.DEFAULT_NLE_FOLDER, 'yuki'), '/Users/yuki/Library/Mobile Documents/com~apple~CloudDocs/CUTS');
+  assert.strictEqual(nle.expandHome('~/Downloads', 'yuki'), '/Users/yuki/Downloads');
+  assert.ok(nle.needsMacUser(nle.DEFAULT_NLE_FOLDER) && nle.needsMacUser('~') && !nle.needsMacUser('/Users/yuki/x') && !nle.needsMacUser(''));
+  assert.strictEqual(nle.buildMkdirCommand('/Users/yuki/Library/Mobile Documents/com~apple~CloudDocs/CUTS'), "mkdir -p '/Users/yuki/Library/Mobile Documents/com~apple~CloudDocs/CUTS'");
+  assert.strictEqual(nle.buildMkdirCommand("/a/o'b"), "mkdir -p '/a/o'\\''b'");
+  // the XML path for the default folder: spaces encoded, "~" kept
+  const m = nle.buildTimelineModel({ title: 't', fps: '30', format: '1920x1080 / 16:9', exportFolder: 't_NLE', baseUrl: nle.expandHome(nle.DEFAULT_NLE_FOLDER, 'yuki'),
+    rows: [{ no: 1, caption: '', durationSec: 1, visual: { assetId: 'v0001', kind: 'image', file: 'assets/v0001_a.png', name: 'a.png' } }], bgm: null });
+  assert.ok(nle.buildXmeml(m).includes('<pathurl>file://localhost/Users/yuki/Library/Mobile%20Documents/com~apple~CloudDocs/CUTS/t_NLE/assets/v0001_a.png</pathurl>'));
+  console.log('NLE FOLDER helper checks passed');
+}

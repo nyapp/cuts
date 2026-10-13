@@ -682,26 +682,96 @@
   }
 
   const BASE_KEY = 'cuts.nleExport.baseFolder';
+  const USER_KEY = 'cuts.nleExport.macUser';
+  const USER_TOKEN = '【ユーザー名】';
+  // iCloud Drive's root on macOS is ~/Library/Mobile Documents/com~apple~CloudDocs.
+  // A web page cannot know the Mac user name, so the default carries a placeholder that is
+  // filled in once (asked at the first export, then remembered).
+  const DEFAULT_NLE_FOLDER = `/Users/${USER_TOKEN}/Library/Mobile Documents/com~apple~CloudDocs/CUTS`;
+
+  // ---- pure helpers (tested in Node) ----
+  function needsMacUser(path) {
+    const p = String(path || '').trim();
+    return p.includes(USER_TOKEN) || p === '~' || p.startsWith('~/');
+  }
+  function expandHome(path, user) {
+    let p = String(path || '').trim().split(USER_TOKEN).join(user);
+    if (p === '~' || p.startsWith('~/')) p = `/Users/${user}${p.slice(1)}`;
+    return p;
+  }
+  function shellQuote(s) {
+    return "'" + String(s).replace(/'/g, "'\\''") + "'";
+  }
+  // mkdir -p is idempotent: creates the folder (and parents) only when missing
+  function buildMkdirCommand(path) {
+    return `mkdir -p ${shellQuote(path)}`;
+  }
+
+  // ---- browser glue ----
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+  const isMacLike = () => /Mac|iPhone|iPad/.test(`${navigator.platform || ''} ${navigator.userAgent || ''}`);
 
   function getNleFolder() {
     const el = typeof document !== 'undefined' ? document.getElementById('nle-folder') : null;
     if (el) return String(el.value || '').trim();
-    try { return localStorage.getItem(BASE_KEY) || ''; } catch (_) { return ''; }
+    return lsGet(BASE_KEY) || '';
   }
 
-  // Wire the NLE FOLDER input: restore from localStorage, persist on change.
+  // The folder to write into the XML. Fills in the Mac user name when the value still has the
+  // placeholder or starts with "~" (asks once, remembers). Returns null when the user cancels.
+  function resolveNleFolder() {
+    const el = document.getElementById('nle-folder');
+    let v = getNleFolder();
+    const m = /^\/Users\/([^/]+)\//.exec(v);
+    if (m && m[1] !== USER_TOKEN && !lsGet(USER_KEY)) lsSet(USER_KEY, m[1]); // learn it from a typed path
+    if (!needsMacUser(v)) return v;
+    let user = lsGet(USER_KEY);
+    if (!user) {
+      const a = window.prompt('Mac のユーザー名を入力してください（Finder のホームフォルダの名前。ターミナルの whoami でも分かります）。一度入力すると記憶します。', '');
+      user = a === null ? '' : a.trim().replace(/[\\/]/g, '');
+      if (!user) return null;
+      lsSet(USER_KEY, user);
+    }
+    v = expandHome(v, user);
+    if (el) el.value = v;
+    lsSet(BASE_KEY, v);
+    return v;
+  }
+
+  // Copy "mkdir -p <NLE FOLDER>" so the folder can be created from Terminal when it does not exist yet
+  // (browsers cannot create folders on disk by themselves).
+  async function copyMkdirCommand() {
+    const folder = resolveNleFolder();
+    if (folder === null) { setBusyStatus('中止しました（ユーザー名が未入力）'); return; }
+    if (!folder) { setBusyStatus('NLE FOLDER が空です'); return; }
+    const cmd = buildMkdirCommand(folder);
+    try {
+      await navigator.clipboard.writeText(cmd);
+      setBusyStatus('コピーしました。ターミナルに貼り付けて Return を押すと、フォルダが無ければ作成されます');
+    } catch (_) {
+      window.prompt('次のコマンドをコピーして、ターミナルで実行してください', cmd);
+    }
+  }
+
+  // Wire the NLE FOLDER input: default to iCloud Drive/CUTS on first use, persist on change.
   function setupNleFolderInput() {
     const el = document.getElementById('nle-folder');
     if (!el) return;
-    try { el.value = localStorage.getItem(BASE_KEY) || ''; } catch (_) {}
-    el.addEventListener('change', () => {
-      try { localStorage.setItem(BASE_KEY, String(el.value || '').trim()); } catch (_) {}
-    });
+    const saved = lsGet(BASE_KEY);
+    let v = saved === null ? (isMacLike() ? DEFAULT_NLE_FOLDER : '') : saved;
+    const user = lsGet(USER_KEY);
+    if (user && needsMacUser(v)) v = expandHome(v, user);
+    el.value = v;
+    el.addEventListener('change', () => lsSet(BASE_KEY, String(el.value || '').trim()));
+    const mk = document.getElementById('btn-nle-mkdir');
+    if (mk) mk.addEventListener('click', copyMkdirCommand);
   }
 
   async function exportForNle() {
     try {
-      const baseUrl = getNleFolder();
+      const baseUrl = resolveNleFolder();
+      if (baseUrl === null) { setBusyStatus('書き出しを中止しました（ユーザー名が未入力）'); return; }
       const input = await collectExportInput(baseUrl);
       const model = buildTimelineModel(input);
       if (!model.cuts.length) {
@@ -737,7 +807,7 @@
         onProgress: (done, total) => setBusyStatus(`NLE 用 ZIP を作成中… ${done} / ${total}`),
       });
       downloadBlob(blob, `${model.exportFolder}.zip`);
-      setBusyStatus(`書き出しました（${formatBytes(blob.size)}）`);
+      setBusyStatus(`書き出しました（${formatBytes(blob.size)}）` + (baseUrl ? `。ZIP を ${baseUrl} に展開すると Premiere でそのまま開けます` : ''));
 
       if (model.warnings.length) {
         alert('書き出しました。注意:\n- ' + model.warnings.join('\n- '));
@@ -757,6 +827,7 @@
     buildTimelineModel, assignPlaceholders,
     buildXmeml, buildSrt, buildOtio, buildFcpxml, buildReadme,
     exportForNle, setupNleFolderInput,
+    needsMacUser, expandHome, shellQuote, buildMkdirCommand, DEFAULT_NLE_FOLDER,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CutsNleExport = api;

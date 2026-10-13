@@ -12,7 +12,7 @@ CUTS のショットリストを、Premiere Pro / DaVinci Resolve / Final Cut Pr
 | ZIP 構成 | 最上位 1 フォルダ `<title>_NLE_<yyyymmdd-hhmm>/` の中に `.xml` + `assets/` + `README.txt`。補助形式は `other_formats/` |
 | テロップの運び方 | **xmeml の V2 に FCP7 Text ジェネレータ**として同梱（Premiere がタイトル/グラフィックに変換、クリップに追従）。FCPXML は Basic Title。SRT は `other_formats/` に代替として同梱 |
 | マーカー | 出さない（シーケンスマーカーはクリップに追従せず編集の邪魔になるため、v1.2.0 で廃止） |
-| メディアパス | コントロールバーの **NLE FOLDER**（ZIP を展開する場所、localStorage に記憶）+ `<title>_NLE_<日時>/assets/…`。展開先が固定なら再リンク不要。空なら相対パスで書き、NLE 側の再リンクに任せる |
+| メディアパス | コントロールバーの **NLE FOLDER**（既定は iCloud Drive 直下の `CUTS`。ユーザー名は初回のみ入力）+ `<title>_NLE_<日時>/assets/…`。そこに展開すれば再リンク不要。空なら相対パスで書き、NLE 側の再リンクに任せる。フォルダ作成は MKDIR ボタン（`mkdir -p` をコピー） |
 | 尺→フレーム | 累積秒を丸めてフレーム境界を決める（カット単位で丸めない）。合計尺がズレない |
 | 作らないもの | .prproj 直接生成、AAF、EDL、Premiere プラグイン（理由は下表） |
 
@@ -73,15 +73,36 @@ Premiere Pro が **ネイティブに** 読むタイムライン交換形式は�
 
 ## メディアパスと再リンク
 
-xmeml の `<pathurl>` と FCPXML の `src` は本来 **絶対 file URL**。ブラウザからはローカルの絶対パスが分からないので、コントロールバーの **NLE FOLDER** に「ZIP を展開する場所」を 1 回入れてもらう（localStorage に記憶、印刷シートには出ない）。ZIP は最上位に `<title>_NLE_<日時>/` を持つので、そこで展開すればパスが一致し再リンクは不要。日時付きなので再書き出しで衝突しない。Safari は既定で ZIP を自動展開するため、NLE FOLDER = `~/Downloads` にすると「EXPORT NLE → Premiere で読み込み」の 2 手順で完結する。
+xmeml の `<pathurl>` と FCPXML の `src` は本来 **絶対 file URL**。ブラウザからはローカルの絶対パスが分からないので、コントロールバーの **NLE FOLDER**（ZIP を展開する場所）を使う。localStorage に記憶し、印刷シートには出ない。
+
+### 既定値は iCloud Drive 直下の CUTS
+
+macOS では初回の既定値が次になる（iCloud Drive のルートは `~/Library/Mobile Documents/com~apple~CloudDocs`）。
+
+```
+/Users/【ユーザー名】/Library/Mobile Documents/com~apple~CloudDocs/CUTS
+```
+
+- `【ユーザー名】` は Web ページから取得できないため、**最初の EXPORT NLE で一度だけ** Mac のユーザー名を聞き、置き換えて記憶する（Finder のホームフォルダの名前、またはターミナルの `whoami`）。キャンセルすると書き出しを中止する。
+- `~/Downloads` のように `~` で始めて入力しても、同じユーザー名で `/Users/<名前>/Downloads` に展開される。
+- 欄を空にして変更すると、以後も空のまま（相対パスで書き出し、Premiere の「メディアをリンク」で再リンク）。
+- macOS 以外では既定値は空。
+
+### フォルダが無い場合（作成について）
+
+ブラウザの Web ページはディスク上にフォルダを作れない（Chrome の File System Access API も macOS では `~/Library` 配下を選択禁止にしており、iCloud Drive の実体はその中にある）。代わりに **MKDIR ボタン**が `mkdir -p '<NLE FOLDER>'` をクリップボードにコピーする。ターミナルに貼り付けて Return を押すと、フォルダが無ければ作成され、あれば何も起きない。Finder で iCloud Drive を開いて「CUTS」フォルダを作っても同じ。
+
+### ZIP を NLE FOLDER に展開する
+
+ZIP の最上位は `<title>_NLE_<日時>/` なので、**NLE FOLDER の中に展開**するとパスが一致し、再リンクは不要。Safari なら、設定 > 一般 > ファイルのダウンロード先 > その他… で iCloud Drive の「CUTS」を選ぶと、ZIP のダウンロードと自動展開がそのまま NLE FOLDER に入る。書き出し直後のステータスにも展開先を表示する。
 
 | NLE FOLDER | xmeml pathurl | fcpxml / otio |
 |---|---|---|
-| `/Users/yuki/Downloads` | `file://localhost/Users/yuki/Downloads/<title>_NLE_<日時>/assets/…` | `file:///Users/yuki/Downloads/<title>_NLE_<日時>/assets/…` |
+| `/Users/yuki/Library/Mobile Documents/com~apple~CloudDocs/CUTS` | `file://localhost/Users/yuki/Library/Mobile%20Documents/com~apple~CloudDocs/CUTS/<title>_NLE_<日時>/assets/…` | `file:///Users/yuki/Library/Mobile%20Documents/com~apple~CloudDocs/CUTS/<title>_NLE_<日時>/assets/…` |
 | `C:\work` | `file://localhost/C:/work/<title>_NLE_<日時>/assets/…` | `file:///C:/work/<title>_NLE_<日時>/assets/…` |
 | 空欄 | `<title>_NLE_<日時>/assets/…`（相対） | 同左 |
 
-相対のままでも Premiere は「メディアをリンク」ダイアログで `assets/` 内の 1 ファイルを指定すれば同フォルダを一括再リンクする（README.txt に手順を同梱）。
+注意: iCloud Drive に置いた素材は iCloud の容量を使って同期される。「Mac のストレージを最適化」が有効だと、使っていない大きなファイルは Mac から退避され、Premiere で開くときにダウンロード待ちになることがある。
 
 ## 検証状況
 
