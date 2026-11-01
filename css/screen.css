@@ -778,6 +778,38 @@
 .bgm-box.is-missing .file-name::before { content: "未リンク · "; color: #ffb4b4; }
 
 /* =====================================================================
+   Start screen: big IMPORT MEDIA (hidden once any cut has media)
+   ===================================================================== */
+.import-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 18px;
+    padding: 34px 16px 28px;
+    text-align: center;
+    border: 2px dashed var(--border-input);
+    border-radius: var(--radius-lg);
+    background: var(--panel-bg-2);
+}
+.import-hero[hidden] { display: none !important; }
+.import-hero-btn {
+    padding: 22px 64px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #fff;
+    background: var(--text-color);
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+.import-hero-btn:hover:not(:disabled) { opacity: 0.92; }
+.import-hero-btn:disabled { opacity: 0.5; cursor: default; }
+.import-hero-sub { font-size: 14px; color: var(--text-color); }
+.import-hero-hint { font-size: 12px; color: var(--muted-text); }
+
+/* =====================================================================
    Row actions popup (⋯ menu). position:fixed; JS sets left/top.
    ===================================================================== */
 .row-menu {
@@ -932,6 +964,11 @@ button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
     .bgm-box:empty::after { line-height: 44px; }
     .bgm-action { height: 44px; min-width: 56px; }
 
+    /* --- start screen --- */
+    .import-hero { padding: 22px 12px 18px; margin-bottom: 14px; }
+    .import-hero-btn { width: 100%; min-height: 72px; padding: 0 16px; font-size: 22px; }
+    .import-hero-hint { display: none; } /* no drag & drop on phones */
+
     /* --- LINK MEDIA --- */
     .storage-options { gap: 4px 10px; }
     .storage-options .opt-link { display: flex; align-items: center; gap: 6px; min-height: 44px; flex-wrap: wrap; }
@@ -1078,5 +1115,6 @@ button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
     .nle-folder-wrap,
     .storyboard-toolbar,
     .storage-options,
+    .import-hero,
     .drop-banner { display: none; }
 }

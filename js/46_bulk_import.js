@@ -124,8 +124,8 @@
     }
 
     importing = true;
-    const btn = $('btn-import-media');
-    if (btn) btn.disabled = true;
+    const btns = ['btn-import-media', 'btn-import-hero'].map($).filter(Boolean);
+    btns.forEach((b) => { b.disabled = true; });
     try {
       const tbody = $('storyboard-body');
       const targets = []; // { file, row }
@@ -189,15 +189,37 @@
       setStatus('取り込みに失敗しました');
     } finally {
       importing = false;
-      if (btn) btn.disabled = false;
+      btns.forEach((b) => { b.disabled = false; });
     }
+  }
+
+  // The big IMPORT MEDIA call to action is only for the empty start screen: hidden as soon as any cut has media.
+  function setupImportHero() {
+    const hero = $('import-hero');
+    if (!hero) return;
+    const update = () => { hero.hidden = !!document.querySelector('#storyboard-body .visual-box[data-asset-id]'); };
+    let queued = false;
+    const schedule = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; update(); });
+    };
+    const body = $('storyboard-body');
+    if (body && typeof MutationObserver !== 'undefined') {
+      new MutationObserver(schedule).observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-asset-id'] });
+    }
+    update();
   }
 
   function setupBulkImport() {
     const btn = $('btn-import-media');
+    const hero = $('btn-import-hero');
     const input = $('bulk-media-input');
+    setupImportHero();
+    if (input) {
+      [btn, hero].filter(Boolean).forEach((b) => b.addEventListener('click', () => input.click()));
+    }
     if (btn && input) {
-      btn.addEventListener('click', () => input.click());
       input.addEventListener('change', () => {
         const files = Array.from(input.files || []);
         input.value = ''; // allow picking the same files again

@@ -17,6 +17,7 @@
 - **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
 - **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
 - **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
+- **Start screen** — Until the first photo / video is added, a big **IMPORT MEDIA** button (and a drop zone) sits at the top of the page; it disappears once any cut has media and returns if they are all removed.
 - **Hundreds of clips** — Import registers files instantly and builds thumbnails only for the cuts on screen; **LINK MEDIA** keeps media out of ZIPs (lite saves, link-only NLE export) and **RELINK MEDIA** reconnects the originals. See [Large projects](#large-projects-many-clips).
 - **Bulk import** — **IMPORT MEDIA** takes many photos / videos at once (phones: the photo library picker), one cut per file. You can also drop files anywhere on the page. See [Bulk import](#bulk-import).
 - **Sort by capture time** — One button reorders the cuts by when each image / video was captured (photo EXIF, video metadata). Cuts without a time go to the end; one tap undoes it. See [Sort by capture time](#sort-by-capture-time).

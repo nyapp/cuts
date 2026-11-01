@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CUTS - Cut-based Unified Timeline Sheet</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<link rel="stylesheet" href="css/screen.css?v=1.7.0" media="all">
+<link rel="stylesheet" href="css/screen.css?v=1.7.1" media="all">
 </head>
 <body>
 
@@ -31,6 +31,13 @@
 
 <div class="page">
     <div class="project-title" id="project-title-display">(Untitled)</div>
+
+    <!-- Empty state: shown until the first photo / video is added -->
+    <div class="import-hero" id="import-hero">
+        <button class="import-hero-btn" id="btn-import-hero" type="button">IMPORT MEDIA</button>
+        <div class="import-hero-sub">写真・動画をまとめて取り込む。1 ファイルが 1 カットになります</div>
+        <div class="import-hero-hint">ここにドラッグ＆ドロップでもOK</div>
+    </div>
     <div class="header-block">
         <div class="header-info">
             <div class="header-item">
@@ -151,24 +158,24 @@
             </tbody>
     </table>
 </div>
-<script src="js/00_version.js?v=1.7.0"></script>
-<script src="js/05_state.js?v=1.7.0"></script>
-<script src="js/10_dom.js?v=1.7.0"></script>
-<script src="js/12_zip_store.js?v=1.7.0"></script>
-<script src="js/20_asset_store.js?v=1.7.0"></script>
-<script src="js/30_assets_visual.js?v=1.7.0"></script>
-<script src="js/31_assets_bgm.js?v=1.7.0"></script>
-<script src="js/40_rows.js?v=1.7.0"></script>
-<script src="js/44_media_meta.js?v=1.7.0"></script>
-<script src="js/45_capture_sort.js?v=1.7.0"></script>
-<script src="js/46_bulk_import.js?v=1.7.0"></script>
-<script src="js/47_lazy_thumbs.js?v=1.7.0"></script>
-<script src="js/48_media_link.js?v=1.7.0"></script>
-<script src="js/50_timeline.js?v=1.7.0"></script>
-<script src="js/60_keyboard_ime.js?v=1.7.0"></script>
-<script src="js/70_zip_io.js?v=1.7.0"></script>
-<script src="js/80_nle_export.js?v=1.7.0"></script>
-<script src="js/02_sanity_check.js?v=1.7.0"></script>
-<script src="js/01_bootstrap.js?v=1.7.0"></script>
+<script src="js/00_version.js?v=1.7.1"></script>
+<script src="js/05_state.js?v=1.7.1"></script>
+<script src="js/10_dom.js?v=1.7.1"></script>
+<script src="js/12_zip_store.js?v=1.7.1"></script>
+<script src="js/20_asset_store.js?v=1.7.1"></script>
+<script src="js/30_assets_visual.js?v=1.7.1"></script>
+<script src="js/31_assets_bgm.js?v=1.7.1"></script>
+<script src="js/40_rows.js?v=1.7.1"></script>
+<script src="js/44_media_meta.js?v=1.7.1"></script>
+<script src="js/45_capture_sort.js?v=1.7.1"></script>
+<script src="js/46_bulk_import.js?v=1.7.1"></script>
+<script src="js/47_lazy_thumbs.js?v=1.7.1"></script>
+<script src="js/48_media_link.js?v=1.7.1"></script>
+<script src="js/50_timeline.js?v=1.7.1"></script>
+<script src="js/60_keyboard_ime.js?v=1.7.1"></script>
+<script src="js/70_zip_io.js?v=1.7.1"></script>
+<script src="js/80_nle_export.js?v=1.7.1"></script>
+<script src="js/02_sanity_check.js?v=1.7.1"></script>
+<script src="js/01_bootstrap.js?v=1.7.1"></script>
 </body>
 </html>
