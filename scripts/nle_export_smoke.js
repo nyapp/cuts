@@ -65,3 +65,26 @@ console.log('wrote', Object.keys(files).join(', '), '->', outDir);
   assert.ok(nle.buildXmeml(m).includes('<pathurl>file://localhost/Users/yuki/Library/Mobile%20Documents/com~apple~CloudDocs/CUTS/t_NLE/assets/v0001_a.png</pathurl>'));
   console.log('NLE FOLDER helper checks passed');
 }
+
+// ---- LINK MEDIA: linked assets point at MEDIA FOLDER + original name, placeholders stay in the package ----
+{
+  const assert = require('assert');
+  const m = nle.buildTimelineModel({ title: 't', fps: '30', format: '1920x1080 / 16:9', exportFolder: 't_NLE', baseUrl: '/Users/yuki/Library/Mobile Documents/com~apple~CloudDocs/CUTS', mediaBase: '/Volumes/SSD/shoot 1',
+    rows: [
+      { no: 1, caption: '', durationSec: 1, visual: { assetId: 'v0001', kind: 'video', file: 'IMG_0001.MOV', name: 'IMG_0001.MOV', linked: true, sourceSec: 5 } },
+      { no: 2, caption: '', durationSec: 1, visual: null },
+    ], bgm: { assetId: 'm0001', file: 'song.mp3', name: 'song.mp3', linked: true, sourceSec: 60 } });
+  nle.assignPlaceholders(m);
+  const xml = nle.buildXmeml(m);
+  assert.ok(xml.includes('<pathurl>file://localhost/Volumes/SSD/shoot%201/IMG_0001.MOV</pathurl>'), 'linked video path');
+  assert.ok(xml.includes('<pathurl>file://localhost/Volumes/SSD/shoot%201/song.mp3</pathurl>'), 'linked bgm path');
+  assert.ok(xml.includes('/CUTS/t_NLE/assets/placeholder_02.png</pathurl>'), 'placeholder stays in the package');
+  assert.ok(nle.buildOtio(m).includes('"target_url": "file:///Volumes/SSD/shoot%201/IMG_0001.MOV"'));
+  assert.ok(nle.buildFcpxml(m).includes('src="file:///Volumes/SSD/shoot%201/IMG_0001.MOV"'));
+  // blank MEDIA FOLDER -> relative original name
+  const r = nle.buildTimelineModel({ title: 't', fps: '30', format: '', exportFolder: 't_NLE', baseUrl: '', mediaBase: '',
+    rows: [{ no: 1, caption: '', durationSec: 1, visual: { assetId: 'v1', kind: 'image', file: 'a b.png', name: 'a b.png', linked: true } }], bgm: null });
+  assert.ok(nle.buildXmeml(r).includes('<pathurl>a%20b.png</pathurl>'));
+  assert.ok(nle.buildReadme(m).includes('素材は元のファイルを参照'));
+  console.log('LINK MEDIA export checks passed');
+}

@@ -34,6 +34,8 @@ function setBoxAsset(box, file, kind) {
 
   box.dataset.assetId = assetId;
   box.dataset.assetName = rawName; // immutable original name
+  box.dataset.assetSize = String(file.size); // used to re-link the original file after a "lite" save
+  box.classList.remove('is-missing');
   box.dataset.filename = rawName;
   box.dataset.kind = kind || box.dataset.kind || '';
   box.dataset.filetype = file.type || box.dataset.filetype || '';

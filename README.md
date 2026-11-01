@@ -17,6 +17,7 @@
 - **Row reorder** — Drag rows by the handle (No. column); row menu (⋯) for delete.
 - **ZIP project** — Save/load project as a single ZIP (manifest + assets + thumbnails); version auto-increments on save.
 - **Print → PDF** — A4-friendly layout; use browser Print (Ctrl+P / Cmd+P) to export as PDF.
+- **Hundreds of clips** — Import registers files instantly and builds thumbnails only for the cuts on screen; **LINK MEDIA** keeps media out of ZIPs (lite saves, link-only NLE export) and **RELINK MEDIA** reconnects the originals. See [Large projects](#large-projects-many-clips).
 - **Bulk import** — **IMPORT MEDIA** takes many photos / videos at once (phones: the photo library picker), one cut per file. You can also drop files anywhere on the page. See [Bulk import](#bulk-import).
 - **Sort by capture time** — One button reorders the cuts by when each image / video was captured (photo EXIF, video metadata). Cuts without a time go to the end; one tap undoes it. See [Sort by capture time](#sort-by-capture-time).
 - **Phone-friendly** — At 640 px and below each cut becomes a card (No. / sec, visual, caption), the buttons move to a bottom toolbar, and form fields are 16 px so iOS Safari does not zoom. Tap a visual box to add or replace an image/video; use the ⋯ menu for Move up / Move down / Clear visual / Delete.
@@ -75,17 +76,25 @@ Suitable for version control (binary assets) or long-term storage; load back via
 
 ### Large projects (many clips)
 
-SAVE ZIP, LOAD ZIP and EXPORT NLE do not load media into memory. ZIPs are written uncompressed (media are already compressed) as headers around references to your original files (`js/12_zip_store.js`), and LOAD ZIP reads only the index and uses slices of the ZIP file. Measured in Chromium with 60 three-second clips:
+Three things used to scale with the number of clips; all three are now bounded.
 
-| Project size | Before (JSZip) | Now |
+| | Before | Now |
 |---|---|---|
-| 449 MB, SAVE ZIP | +1.7 GB browser memory, 15 s | +70 MB, 4 s |
-| 2.1 GB, SAVE ZIP / EXPORT NLE | would need ~8 GB | +90 MB, 20 s (most of it the browser writing the download) |
-| 449 MB, LOAD ZIP | whole ZIP read into memory | +30 MB, 1 s |
+| Import 300 clips (1.5 GB) | 128 s, browser memory 1.6 GB, 24 freezes (up to 2 s) | 6 s, 0.95 GB, thumbnails only for what is on screen |
+| Import 1000 clips | 406 s | 11 s |
+| SAVE ZIP 449 MB | +1.7 GB memory, 15 s | +70 MB, 4 s |
+| SAVE ZIP / EXPORT NLE 2.1 GB | would need ~8 GB | +90 MB, ~20 s (mostly the browser writing the download) |
+| LOAD ZIP 449 MB | whole ZIP read into memory | +30 MB, 1 s |
 
-Notes: keep the original files in place until the download finishes (the ZIP is built from references to them). ZIPs from other tools (compressed) still load through JSZip, which is memory-heavy. ZIP64 is written automatically above 4 GB. Test: `node scripts/zip_store_smoke.js`.
+(Measured in headless Chromium; see `scripts/` for the smoke tests. Not measured on Safari / iPhone.)
 
----
+- **ZIPs are memory-flat.** They are written uncompressed (media are already compressed) as headers around references to your original files (`js/12_zip_store.js`), and LOAD ZIP reads only the index and uses slices of the ZIP file. ZIP64 is written automatically above 4 GB; compressed ZIPs from other tools still load through JSZip, which is memory-heavy. Keep the original files in place until the download finishes.
+- **LINK MEDIA (capacity).** Every SAVE ZIP copies all media and bumps the version, so downloads pile up (300 clips = 2 GB per save). Tick **LINK MEDIA** (below the toolbar) and:
+  - **SAVE ZIP** writes a *lite* project: `manifest.json` with each file's name, size and length, plus thumbnails (kilobytes). `"media": "linked"` in the manifest.
+  - **LOAD ZIP** of a lite project brings the cuts back with thumbnails, flagged **未リンク**. **RELINK MEDIA** opens a folder picker (a file picker on phones) and matches the originals by name and size (Unicode-normalized, so Japanese names written by macOS match). Same name but different size is not a match.
+  - **EXPORT NLE** writes the XML only. Media paths are `<MEDIA FOLDER>/<original name>`; leave MEDIA FOLDER empty to get relative names and relink once in Premiere. Two different files that share a name are bundled instead of linked (links would be ambiguous). The black placeholder PNGs for empty cuts still go into the package. Lite projects can be exported without relinking, because the names and lengths are in the manifest.
+  - Bundle mode (LINK MEDIA off) is unchanged, and after a save it tells you when the media were over 1 GB.
+- Tests: `node scripts/zip_store_smoke.js`, `node scripts/media_link_smoke.js`.
 
 ## Video Mock (Python)
 
@@ -133,7 +142,8 @@ python scripts/build_mock_video.py project.zip
 | **Presentation** | `index.html`, `css/screen.css` | Structure and styles |
 | **Application** | `js/01_bootstrap.js`, `js/40_rows.js`, `js/50_timeline.js` | Entry, rows, timing |
 | **Assets & I/O** | `js/12_zip_store.js`, `js/20_asset_store.js`, `js/30_assets_visual.js`, `js/31_assets_bgm.js`, `js/70_zip_io.js` | Asset registry, visual/BGM handling, ZIP save/load |
-| **Bulk import** | `js/46_bulk_import.js`, `scripts/bulk_import_smoke.js` | Multi-file picker / page drop, row placement, throttled thumbnails |
+| **Bulk import** | `js/44_media_meta.js`, `js/46_bulk_import.js`, `js/47_lazy_thumbs.js`, `scripts/bulk_import_smoke.js` | Multi-file picker / page drop, row placement, header-based durations, lazy thumbnail queue |
+| **Link media** | `js/48_media_link.js`, `scripts/media_link_smoke.js` | LINK MEDIA option, lite saves, RELINK MEDIA matching |
 | **Capture sort** | `js/45_capture_sort.js`, `scripts/capture_sort_smoke.js` | EXIF / MP4 capture-time readers, ordering, undo; Node smoke test |
 | **NLE export** | `js/80_nle_export.js`, `scripts/nle_export_smoke.js` | FCP7 XML / SRT / OTIO / FCPXML serializers + export ZIP; Node smoke test |
 | **Utilities** | `js/00_version.js`, `js/02_sanity_check.js`, `js/05_state.js`, `js/10_dom.js`, `js/60_keyboard_ime.js` | App version, startup check, state, DOM helpers, IME/keyboard |
@@ -149,7 +159,7 @@ JSZip is loaded from CDN in `index.html`; no package manager required for the we
 - **Placement**: empty cuts (no visual and no caption) are filled from the top, the rest are appended. Files keep the order the picker or drop provides; the status line then offers **撮影日時順に並べる**.
 - **Drop on one cut**: with several files dropped on a cut's visual box, the first fills that cut and the others become new cuts right after it. One file still just replaces that cut's visual.
 - **Skipped**: anything that is not a photo / video (audio, documents) is skipped and counted in the status line. Files with no MIME type (HEIC, MOV on some desktop browsers) are recognized by extension.
-- **Memory**: video thumbnails are capped at 640 px and photos at 1280 px (iOS Safari limits total canvas memory, which made large batches fail); photos are shown as thumbnails of at most 1280 px, so dozens of 12-megapixel photos stay light. The originals are untouched in the project ZIP, and `thumbs/` in the ZIP is now a real small JPEG instead of a copy of the original. Thumbnails are made 3 at a time; a file that cannot be decoded within 12 s is left as a name-only cut.
+- **No decoding at import**: every file is registered immediately (name, badge, length read from the file header for MP4/MOV, a light metadata probe for WebM). Thumbnails are created lazily, only for cuts that are on screen or about to be (3 at a time, 2 on touch devices; the one nearest the middle of the screen first). Photos are shown as thumbnails of at most 1280 px and video thumbnails at most 640 px (iOS Safari limits total canvas memory), and each hidden `<video>` decoder is released right after use. A thumbnail that fails or times out leaves a name-only cut.
 - Video durations behave as before: a cut's seconds default to the clip length minus 2 s (images: 5 s).
 - Test: `node scripts/bulk_import_smoke.js`.
 

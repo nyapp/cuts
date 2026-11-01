@@ -91,19 +91,19 @@ function box(type, payload) {
   const size = 8 + payload.length;
   return [(size >>> 24) & 255, (size >> 16) & 255, (size >> 8) & 255, size & 255, ...Buffer.from(type), ...payload];
 }
-function mvhd(creationSec, version = 0) {
+function mvhd(creationSec, version = 0, durUnits = 0) {
   const be32 = (v) => [(v >>> 24) & 255, (v >> 16) & 255, (v >> 8) & 255, v & 255];
   const body = version === 1
-    ? [1, 0, 0, 0, ...be32(Math.floor(creationSec / 4294967296)), ...be32(creationSec >>> 0), ...Array(8).fill(0), ...be32(1000), ...be32(0)]
-    : [0, 0, 0, 0, ...be32(creationSec), ...be32(creationSec), ...be32(1000), ...be32(0)];
+    ? [1, 0, 0, 0, ...be32(Math.floor(creationSec / 4294967296)), ...be32(creationSec >>> 0), ...Array(8).fill(0), ...be32(1000), ...be32(0), ...be32(durUnits)]
+    : [0, 0, 0, 0, ...be32(creationSec), ...be32(creationSec), ...be32(1000), ...be32(durUnits)];
   return box('mvhd', [...body, ...Array(80).fill(0)]);
 }
-// moovAtEnd mimics iPhone/most camera files: ftyp, mdat, moov
-function mp4(creationUnixMs, { moovAtEnd = true, version = 0, brand = 'isom' } = {}) {
+// moovAtEnd mimics iPhone/most camera files: ftyp, mdat, moov. durMs = movie duration (timescale 1000)
+function mp4(creationUnixMs, { moovAtEnd = true, version = 0, brand = 'isom', durMs = 0 } = {}) {
   const creationSec = creationUnixMs == null ? 0 : Math.round(creationUnixMs / 1000) + 2082844800;
   const ftyp = box('ftyp', [...Buffer.from(brand), 0, 0, 2, 0, ...Buffer.from(brand)]);
   const mdat = box('mdat', Array(20000).fill(7));
-  const moov = box('moov', mvhd(creationSec, version));
+  const moov = box('moov', mvhd(creationSec, version, durMs));
   return Uint8Array.from(moovAtEnd ? [...ftyp, ...mdat, ...moov] : [...ftyp, ...moov, ...mdat]);
 }
 
@@ -174,6 +174,17 @@ const T0 = Date.UTC(2026, 9, 7, 5, 3, 11);
 
   await test('MP4 with unset creation_time (0) -> null', async () => {
     assert.strictEqual(await cs.readCaptureTime(F(mp4(null), 'l.mp4', 'video/mp4')), null);
+  });
+
+  await test('media meta: duration from mvhd (v0 and v1, moov first or last) and creation time', async () => {
+    const meta = require('../js/44_media_meta.js');
+    for (const opts of [{ durMs: 3500 }, { durMs: 3500, moovAtEnd: false }, { durMs: 3500, version: 1 }]) {
+      const m = await meta.readIsoVideoMeta(F(mp4(T0, opts), 'd.mp4', 'video/mp4'));
+      assert.strictEqual(m.durationSec, 3.5, JSON.stringify(opts));
+      assert.strictEqual(m.createdMs, T0);
+    }
+    assert.strictEqual((await meta.readIsoVideoMeta(F(mp4(null, { durMs: 0 }), 'z.mp4', 'video/mp4'))).durationSec, null);
+    assert.strictEqual(await meta.readIsoVideoMeta(F(Uint8Array.from([1, 2, 3]), 'g.mp4', 'video/mp4')), null);
   });
 
   await test('truncated / garbage video does not throw', async () => {

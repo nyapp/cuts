@@ -26,9 +26,13 @@ async function saveProjectZip() {
     const version = val("h-version") || "1.00";
     const safeTitle = (title || "project").replace(/[\\\/:*?"<>|]/g, "_");
 
+    // LINK MEDIA on: write a lite project (no media); the originals are re-linked after LOAD ZIP
+    const link = !!(window.CutsMediaLink && window.CutsMediaLink.isLinkMode());
+
     // Build manifest
     const manifest = {
       app: { name: 'CUTS', version: typeof CUTS_APP_VERSION === 'string' ? CUTS_APP_VERSION : '' },
+      media: link ? "linked" : "bundled",
       header: {
         title: title || "",
         date: val("h-date"),
@@ -55,7 +59,11 @@ async function saveProjectZip() {
         file: `assets/${id}_${name}`,
         kind: "audio",
         filetype: bgmBox.dataset.filetype || "",
+        name: bgmBox.dataset.assetName || bgmBox.dataset.filename || "",
       };
+      const bgmFile = assetStore.get(id);
+      const bgmSize = bgmFile ? bgmFile.size : Number(bgmBox.dataset.assetSize);
+      if (bgmSize >= 0) manifest.bgm.size = bgmSize;
     }
 
     // Collect rows
@@ -92,6 +100,13 @@ async function saveProjectZip() {
           kind: kind || "",
           filetype: box.dataset.filetype || "",
         };
+        // Source length of a video: lets EXPORT NLE skip re-probing every clip after LOAD ZIP
+        if (box.dataset.sourceDuration) item.visual.sourceDuration = box.dataset.sourceDuration;
+        // Original name and size: used to re-link the file after a lite save (LINK MEDIA)
+        item.visual.name = box.dataset.assetName || box.dataset.filename || "";
+        const vf = assetStore.get(id);
+        const vsize = vf ? vf.size : Number(box.dataset.assetSize);
+        if (vsize >= 0) item.visual.size = vsize;
       }
 
       manifest.rows.push(item);
@@ -107,8 +122,11 @@ async function saveProjectZip() {
       if (row.visual && row.visual.assetId) usedAssetIds.add(row.visual.assetId);
     });
 
+    let mediaBytes = 0;
     for (const [assetId, file] of assetStore.entries()) {
       if (usedAssetIds.has(assetId)) {
+        mediaBytes += file.size;
+        if (link) continue; // lite project: media stay where they are
         const rawName = file.name || "asset";
         entries.push({ name: `assets/${assetId}_${sanitizeFilename(rawName)}`, data: file });
       }
@@ -129,7 +147,10 @@ async function saveProjectZip() {
       onProgress: (done, total) => setBusyStatus(`ZIP を作成中… ${done} / ${total}`),
     });
     downloadBlob(blob, `${safeTitle}_v${version}.zip`);
-    setBusyStatus(`保存しました（${formatBytes(blob.size)}）`);
+    let msg = `保存しました（${formatBytes(blob.size)}）`;
+    if (link) msg += `。素材 ${formatBytes(mediaBytes)} は含めていません（LOAD ZIP のあと RELINK MEDIA で元ファイルを指定）`;
+    else if (mediaBytes >= 1073741824) msg += `。素材 ${formatBytes(mediaBytes)} を含んでいます。LINK MEDIA をオンにすると素材なしの軽量保存になります`;
+    setBusyStatus(msg);
   } catch (err) {
     console.error(err);
     setBusyStatus("");
@@ -308,7 +329,7 @@ async function loadProjectZip(input) {
         const b = manifest.bgm;
         const assetId = b.assetId || "";
         // Remove assetId prefix from filename (same as visual assets)
-        const fileName = (b.file || "")
+        const fileName = b.name || (b.file || "")
           .split("/")
           .pop()
           .replace(new RegExp(`^${assetId}_`), "") || "";
@@ -318,6 +339,7 @@ async function loadProjectZip(input) {
         bgmBox.dataset.filename = fileName;
         bgmBox.dataset.filetype = b.filetype || "";
         bgmBox.dataset.kind = "audio";
+        bgmBox.classList.remove("is-missing");
         bgmBox.innerHTML = `
           <div class="kind-badge">BGM</div>
           <div class="file-name" title="${safeName}">${safeName}</div>
@@ -328,7 +350,9 @@ async function loadProjectZip(input) {
             // Asset was loaded from ZIP, ensure it's registered
             registerAssetWithId(assetId, assetFiles[assetId]);
           } else {
-            console.warn(`BGM asset "${assetId}" not found in loaded assets. Expected file: ${b.file}`);
+            // Lite project: remember name / size for RELINK MEDIA
+            if (b.size != null) bgmBox.dataset.assetSize = String(b.size);
+            bgmBox.classList.add("is-missing");
           }
         }
       } else {
@@ -372,7 +396,7 @@ async function loadProjectZip(input) {
 
       const v = r.visual;
       const assetId = v.assetId || "";
-      const fileName = (v.file || "")
+      const fileName = v.name || (v.file || "")
         .split("/")
         .pop()
         .replace(new RegExp(`^${v.assetId}_`), "") || "";
@@ -384,9 +408,17 @@ async function loadProjectZip(input) {
       box.dataset.filename = fileName;
       box.dataset.filetype = v.filetype || (assetFiles[assetId] ? assetFiles[assetId].type : "");
       box.dataset.kind = kind;
+      if (v.sourceDuration) {
+        box.dataset.sourceDuration = String(v.sourceDuration);
+        box.setAttribute("data-source-duration", String(v.sourceDuration));
+      }
 
       if (assetId && assetFiles[assetId]) {
         registerAssetWithId(assetId, assetFiles[assetId]);
+      } else if (assetId) {
+        // Lite project (or a damaged ZIP): the file is not here. Keep its name and size so RELINK MEDIA can find it.
+        if (v.size != null) box.dataset.assetSize = String(v.size);
+        box.classList.add("is-missing");
       }
 
       const thumb = assetId ? (thumbsMap[assetId] || "") : "";
@@ -401,7 +433,13 @@ async function loadProjectZip(input) {
     recalcStartTimes();
     renumberCuts();
 
-    alert("ZIP project loaded successfully.");
+    // Cuts that came without a thumbnail get one lazily, as they scroll into view
+    if (window.CutsLazyThumbs) window.CutsLazyThumbs.observeAll();
+
+    const missingCount = window.CutsMediaLink ? window.CutsMediaLink.updateMissingUi() : 0;
+    alert("ZIP project loaded successfully." + (missingCount
+      ? `\n\n素材が含まれていない軽量プロジェクトです（未リンク ${missingCount} 件）。RELINK MEDIA を押して、元の素材があるフォルダを選んでください。`
+      : ""));
   } catch (err) {
     console.error(err);
     alert("Failed to load ZIP project.");

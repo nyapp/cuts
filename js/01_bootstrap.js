@@ -122,6 +122,7 @@ function bootstrapCUTS() {
   if (typeof setupNleFolderInput === 'function') setupNleFolderInput();
   if (typeof setupCaptureSort === 'function') setupCaptureSort();
   if (typeof setupBulkImport === 'function') setupBulkImport();
+  if (typeof setupMediaLink === 'function') setupMediaLink();
 
   setupProjectTitleSync();
   applyInitialDefaultsIfEmpty();

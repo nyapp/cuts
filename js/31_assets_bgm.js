@@ -178,6 +178,8 @@ function clearBgm() {
   delete box.dataset.kind;
   delete box.dataset.assetId;
   delete box.dataset.assetName;
+  delete box.dataset.assetSize;
+  box.classList.remove('is-missing');
 
   // Also remove attributes (kebab-case) to avoid stale values being serialized elsewhere
   box.removeAttribute("data-filename");

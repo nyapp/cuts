@@ -96,6 +96,7 @@
     const { width, height } = parseFormat(input.format);
     const title = String(input.title || 'untitled').trim() || 'untitled';
     const baseUrl = String(input.baseUrl || '');
+    const mediaBase = String(input.mediaBase || '');
     const safeTitle = title.replace(/[\\\/:*?"<>|]/g, '_');
     const exportFolder = input.exportFolder || `${safeTitle}_NLE_${exportStamp(input.now)}`;
     const toFrames = (sec) => Math.round(sec * fps.rate + 1e-6);
@@ -144,6 +145,7 @@
           kind,
           file: v.file,
           name: v.name || v.file.split('/').pop(),
+          linked: !!v.linked,   // media stays in the user's media folder (LINK MEDIA): file = original name
           sourceFrames,
           inFrame: 0,
           outFrame,
@@ -169,6 +171,7 @@
       bgm = {
         assetId: input.bgm.assetId || 'bgm',
         file: input.bgm.file,
+        linked: !!input.bgm.linked,
         name: input.bgm.name || input.bgm.file.split('/').pop(),
         sourceFrames: sourceFrames == null ? totalFrames : sourceFrames,
         inFrame: 0,
@@ -176,7 +179,7 @@
       };
     }
 
-    return { title, safeTitle, exportFolder, fps, width, height, baseUrl, cuts, bgm, totalFrames, warnings };
+    return { title, safeTitle, exportFolder, fps, width, height, baseUrl, mediaBase, cuts, bgm, totalFrames, warnings };
   }
 
   // yyyymmdd-hhmm, local time
@@ -189,6 +192,12 @@
   // Media URL for a model-relative path (assets/...), including the export folder.
   function mediaUrl(model, rel, style) {
     return toFileUrl(model.baseUrl, `${model.exportFolder}/${rel}`, style);
+  }
+
+  // Bundled assets live in <NLE FOLDER>/<export>/assets/; linked ones (LINK MEDIA) in the user's media folder
+  // under their original name (blank media folder -> relative, the NLE asks to relink once).
+  function assetUrl(model, asset, style) {
+    return asset.linked ? toFileUrl(model.mediaBase, asset.file, style) : mediaUrl(model, asset.file, style);
   }
 
   // Attach placeholder assets (kind 'placeholder') for cuts without a visual.
@@ -219,7 +228,7 @@
     const { fps, width, height } = model;
     const ntsc = fps.ntsc ? 'TRUE' : 'FALSE';
     const rate = `<rate><timebase>${fps.timebase}</timebase><ntsc>${ntsc}</ntsc></rate>`;
-    const url = (rel) => mediaUrl(model, rel, 'localhost');
+    const url = (asset) => assetUrl(model, asset, 'localhost');
     const lines = [];
     const L = (s) => lines.push(s);
 
@@ -243,7 +252,7 @@
       return [
         `<file id="${id}">`,
         `<name>${escXml(asset.name)}</name>`,
-        `<pathurl>${escXml(url(asset.file))}</pathurl>`,
+        `<pathurl>${escXml(url(asset))}</pathurl>`,
         rate,
         `<duration>${dur}</duration>`,
         `<timecode>${rate}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode>`,
@@ -391,7 +400,7 @@
     const rate = model.fps.rate;
     const RT = (v) => ({ OTIO_SCHEMA: 'RationalTime.1', rate, value: v });
     const TR = (start, dur) => ({ OTIO_SCHEMA: 'TimeRange.1', start_time: RT(start), duration: RT(dur) });
-    const url = (rel) => mediaUrl(model, rel, 'triple');
+    const url = (asset) => assetUrl(model, asset, 'triple');
     const clip = (name, asset, inF, outF, metadata) => ({
       OTIO_SCHEMA: 'Clip.2',
       metadata: metadata || {},
@@ -407,7 +416,7 @@
           name: asset.name,
           available_range: TR(0, asset.kind === 'video' || asset.sourceFrames != null ? asset.sourceFrames : outF),
           available_image_bounds: null,
-          target_url: url(asset.file),
+          target_url: url(asset),
         },
       },
       active_media_reference_key: 'DEFAULT_MEDIA',
@@ -453,7 +462,7 @@
   function buildFcpxml(model) {
     const { fps, width, height } = model;
     const T = (frames) => (frames === 0 ? '0s' : `${frames * fps.num}/${fps.den}s`);
-    const url = (rel) => mediaUrl(model, rel, 'triple');
+    const url = (asset) => assetUrl(model, asset, 'triple');
     const fmtName = (() => {
       const std = { 1080: '1080', 2160: '2160', 720: '720' }[height];
       const r = { 23.976: '2398', 24: '24', 25: '25', 29.97: '2997', 30: '30', 50: '50', 59.94: '5994', 60: '60' }[fps.rate];
@@ -471,7 +480,7 @@
       if (assetIds.has(asset.assetId)) return assetIds.get(asset.assetId);
       const id = `r${++rSeq + 0}`;
       assetIds.set(asset.assetId, id);
-      const src = escXml(url(asset.file));
+      const src = escXml(url(asset));
       if (isAudio) {
         resources.push(`<asset id="${id}" name="${escXml(asset.name)}" start="0s" duration="${T(asset.sourceFrames)}" hasAudio="1" audioSources="1" audioChannels="2" audioRate="48000"><media-rep kind="original-media" src="${src}"/></asset>`);
       } else if (asset.kind === 'video') {
@@ -538,17 +547,32 @@
   function buildReadme(model) {
     const t = model.safeTitle;
     const rel = !model.baseUrl;
+    const anyLinked = model.cuts.some((c) => c.asset && c.asset.linked) || !!(model.bgm && model.bgm.linked);
+    const steps = anyLinked
+      ? [
+          'Premiere Pro での手順（素材は元のファイルを参照。ZIP には素材を入れていません）',
+          rel
+            ? '  1. この ZIP を展開する（macOS はダブルクリック）'
+            : `  1. この ZIP を「NLE FOLDER」に指定したフォルダ（${model.baseUrl}）で展開する（macOS はダブルクリック）`,
+          `  2. Premiere で File > 読み込み → ${t}.xml`,
+          model.mediaBase
+            ? `  3. 素材は ${model.mediaBase} にある元ファイルを参照している。そこにあれば自動でリンクされる。場所が違う場合は「メディアをリンク」で元の素材のあるフォルダ内のファイルを 1 つ選ぶ（残りは自動で再リンク）`
+            : '  3. 「メディアをリンク」が出たら、元の素材があるフォルダ内のファイルを 1 つ選ぶ（同じフォルダの残りは自動で再リンク）',
+        ]
+      : [
+          'Premiere Pro での手順',
+          rel
+            ? '  1. この ZIP を展開する（macOS はダブルクリック）'
+            : `  1. この ZIP を「NLE FOLDER」に指定したフォルダ（${model.baseUrl}）で展開する（macOS はダブルクリック）`,
+          `  2. Premiere で File > 読み込み → ${t}.xml`,
+          rel
+            ? '  3. 「メディアをリンク」が出たら assets/ の中のファイルを 1 つ選ぶ（残りは自動で再リンク）'
+            : '  3. 以上。メディアは自動でリンクされる（別の場所に展開した場合だけ「メディアをリンク」で assets/ のファイルを 1 つ選ぶ）',
+        ];
     return [
       `CUTS NLE export: ${model.title}`,
       '',
-      'Premiere Pro での手順',
-      rel
-        ? '  1. この ZIP を展開する（macOS はダブルクリック）'
-        : `  1. この ZIP を「NLE FOLDER」に指定したフォルダ（${model.baseUrl}）で展開する（macOS はダブルクリック）`,
-      `  2. Premiere で File > 読み込み → ${t}.xml`,
-      rel
-        ? '  3. 「メディアをリンク」が出たら assets/ の中のファイルを 1 つ選ぶ（残りは自動で再リンク）'
-        : '  3. 以上。メディアは自動でリンクされる（別の場所に展開した場合だけ「メディアをリンク」で assets/ のファイルを 1 つ選ぶ）',
+      ...steps,
       '',
       '開いた後のシーケンス',
       '  V1  各カット（Cut 01, 02, ...）。尺どおりに並ぶ。Visual Reference が無いカットは黒地にカット番号の PNG',
@@ -557,7 +581,7 @@
       '',
       '同梱ファイル',
       `  ${t}.xml                  Final Cut Pro 7 XML。Premiere / DaVinci Resolve 用`,
-      '  assets/                   参照メディア',
+      anyLinked ? '  assets/                   素材は含まない（Visual Reference が無いカットの黒地 PNG だけ）' : '  assets/                   参照メディア',
       `  other_formats/${t}.srt    テロップの字幕ファイル（V2 のタイトルがうまく出ない場合の代替。読み込んでシーケンスにドロップ）`,
       `  other_formats/${t}.otio   OpenTimelineIO。Premiere Pro 2026 / Resolve / Blender 用`,
       `  other_formats/${t}.fcpxml FCPXML 1.11。Final Cut Pro 用（テロップは Basic Title）`,
@@ -633,10 +657,37 @@
     });
   }
 
+  // Run fn over items with at most `limit` in flight.
+  async function mapPool(items, limit, fn) {
+    let next = 0;
+    const worker = async () => {
+      while (next < items.length) {
+        const i = next++;
+        await fn(items[i], i);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  }
+
   // Collect the current UI state into the exporter input shape.
-  async function collectExportInput(baseUrl) {
+  // opts.link: LINK MEDIA is on -> visuals keep their original file name and are not copied (unless two files share
+  // a name, which would be ambiguous). opts.mediaBase: folder that holds the originals (may be '').
+  async function collectExportInput(baseUrl, opts) {
+    const o = opts || {};
     const rows = [];
     const trs = document.querySelectorAll('#storyboard-body tr');
+    const bgmBox = document.getElementById('bgm-box');
+    const rawName = (b, fallback) => (b.dataset.assetName || b.dataset.filename || fallback);
+
+    const isUnique = o.link && window.CutsMediaLink
+      ? window.CutsMediaLink.uniqueNames([
+          ...Array.from(trs).map((r) => r.querySelector('.visual-box')).filter((b) => b && b.dataset.assetId).map((b) => rawName(b, '')),
+          ...(bgmBox && bgmBox.dataset.assetId ? [rawName(bgmBox, '')] : []),
+        ])
+      : () => false;
+
+    const needDuration = [];
+    let missingBundled = 0;
     for (let idx = 0; idx < trs.length; idx++) {
       const row = trs[idx];
       const box = row.querySelector('.visual-box');
@@ -650,24 +701,34 @@
       };
       if (box && box.dataset && box.dataset.assetId) {
         const id = box.dataset.assetId;
-        const name = sanitizeFilename(box.dataset.assetName || box.dataset.filename || `cut_${idx + 1}`);
+        const raw = rawName(box, `cut_${idx + 1}`);
+        const linked = !!o.link && isUnique(raw);
+        const name = linked ? raw : sanitizeFilename(raw);
         const kind = (box.dataset.kind || '').toLowerCase() === 'video' ? 'video' : 'image';
-        let sourceSec = kind === 'video' ? Number(box.dataset.sourceDuration) : null;
-        if (kind === 'video' && !(sourceSec > 0)) {
-          sourceSec = await probeMediaDuration(assetStore.get(id), 'video');
-        }
-        item.visual = { assetId: id, kind, file: `assets/${id}_${name}`, name, sourceSec };
+        const known = kind === 'video' ? Number(box.dataset.sourceDuration) : null;
+        item.visual = { assetId: id, kind, file: linked ? raw : `assets/${id}_${name}`, name, linked, sourceSec: known };
+        if (kind === 'video' && !(known > 0)) needDuration.push({ visual: item.visual, file: assetStore.get(id) });
+        if (!linked && !assetStore.get(id)) missingBundled += 1;
       }
       rows.push(item);
     }
 
+    // Source lengths that are not known yet: read the file header (a few small reads), fall back to the element
+    await mapPool(needDuration, 8, async (n) => {
+      if (!n.file) return;
+      const m = window.CutsMediaMeta ? await window.CutsMediaMeta.readVideoMeta(n.file) : null;
+      n.visual.sourceSec = m ? m.durationSec : await probeMediaDuration(n.file, 'video');
+    });
+
     let bgm = null;
-    const bgmBox = document.getElementById('bgm-box');
     if (bgmBox && bgmBox.dataset && bgmBox.dataset.assetId) {
       const id = bgmBox.dataset.assetId;
-      const name = sanitizeFilename(bgmBox.dataset.assetName || bgmBox.dataset.filename || 'bgm');
+      const raw = rawName(bgmBox, 'bgm');
+      const linked = !!o.link && isUnique(raw);
+      const name = linked ? raw : sanitizeFilename(raw);
       const sourceSec = await probeMediaDuration(assetStore.get(id), 'audio');
-      bgm = { assetId: id, file: `assets/${id}_${name}`, name, sourceSec };
+      bgm = { assetId: id, file: linked ? raw : `assets/${id}_${name}`, name, linked, sourceSec };
+      if (!linked && !assetStore.get(id)) missingBundled += 1;
     }
 
     return {
@@ -675,9 +736,11 @@
       fps: val('h-fps'),
       format: val('h-format'),
       baseUrl,
+      mediaBase: o.mediaBase || '',
       now: new Date(),
       rows,
       bgm,
+      missingBundled,
     };
   }
 
@@ -718,11 +781,10 @@
     return lsGet(BASE_KEY) || '';
   }
 
-  // The folder to write into the XML. Fills in the Mac user name when the value still has the
-  // placeholder or starts with "~" (asks once, remembers). Returns null when the user cancels.
-  function resolveNleFolder() {
-    const el = document.getElementById('nle-folder');
-    let v = getNleFolder();
+  // A folder path typed into the page (NLE FOLDER / MEDIA FOLDER). Fills in the Mac user name when the value still
+  // has the placeholder or starts with "~" (asks once, remembers). Returns null when the user cancels.
+  function resolveFolderField(el, storageKey) {
+    let v = String(el ? el.value || '' : lsGet(storageKey) || '').trim();
     const m = /^\/Users\/([^/]+)\//.exec(v);
     if (m && m[1] !== USER_TOKEN && !lsGet(USER_KEY)) lsSet(USER_KEY, m[1]); // learn it from a typed path
     if (!needsMacUser(v)) return v;
@@ -735,9 +797,11 @@
     }
     v = expandHome(v, user);
     if (el) el.value = v;
-    lsSet(BASE_KEY, v);
+    lsSet(storageKey, v);
     return v;
   }
+  const resolveNleFolder = () => resolveFolderField(document.getElementById('nle-folder'), BASE_KEY);
+  const resolveMediaFolder = () => resolveFolderField(document.getElementById('media-folder'), 'cuts.mediaFolder');
 
   // Copy "mkdir -p <NLE FOLDER>" so the folder can be created from Terminal when it does not exist yet
   // (browsers cannot create folders on disk by themselves).
@@ -772,8 +836,19 @@
     try {
       const baseUrl = resolveNleFolder();
       if (baseUrl === null) { setBusyStatus('書き出しを中止しました（ユーザー名が未入力）'); return; }
-      const input = await collectExportInput(baseUrl);
+      // LINK MEDIA: do not copy media into the ZIP; the XML points at the originals in MEDIA FOLDER
+      const link = !!(window.CutsMediaLink && window.CutsMediaLink.isLinkMode());
+      let mediaBase = '';
+      if (link) {
+        mediaBase = resolveMediaFolder();
+        if (mediaBase === null) { setBusyStatus('書き出しを中止しました（ユーザー名が未入力）'); return; }
+      }
+      setBusyStatus('素材の情報を読み取り中…');
+      const input = await collectExportInput(baseUrl, { link, mediaBase });
       const model = buildTimelineModel(input);
+      if (input.missingBundled) {
+        model.warnings.push(`${input.missingBundled} 件の素材が未リンクのため ZIP に含められません（RELINK MEDIA で元ファイルを指定してください）。`);
+      }
       if (!model.cuts.length) {
         alert('書き出せるカットがありません（尺が 0 の行は無視されます）。');
         return;
@@ -790,9 +865,11 @@
         { name: `${top}/other_formats/${model.safeTitle}.fcpxml`, data: buildFcpxml(model) },
       ];
 
+      // only bundled assets are copied; linked ones stay where they are
       const used = new Set();
-      model.cuts.forEach((c) => { if (c.asset && c.asset.kind !== 'placeholder') used.add(c.asset.assetId); });
-      if (model.bgm) used.add(model.bgm.assetId);
+      model.cuts.forEach((c) => { if (c.asset && c.asset.kind !== 'placeholder' && !c.asset.linked) used.add(c.asset.assetId); });
+      if (model.bgm && !model.bgm.linked) used.add(model.bgm.assetId);
+      const linkedCount = model.cuts.filter((c) => c.asset && c.asset.linked).length + (model.bgm && model.bgm.linked ? 1 : 0);
       for (const [assetId, file] of assetStore.entries()) {
         if (!used.has(assetId)) continue;
         entries.push({ name: `${top}/assets/${assetId}_${sanitizeFilename(file.name || 'asset')}`, data: file });
@@ -807,7 +884,9 @@
         onProgress: (done, total) => setBusyStatus(`NLE 用 ZIP を作成中… ${done} / ${total}`),
       });
       downloadBlob(blob, `${model.exportFolder}.zip`);
-      setBusyStatus(`書き出しました（${formatBytes(blob.size)}）` + (baseUrl ? `。ZIP を ${baseUrl} に展開すると Premiere でそのまま開けます` : ''));
+      setBusyStatus(`書き出しました（${formatBytes(blob.size)}）`
+        + (linkedCount ? `。素材 ${linkedCount} 件は${mediaBase ? ` ${mediaBase} の` : ''}元ファイルを参照（コピーなし）` : '')
+        + (baseUrl ? `。ZIP を ${baseUrl} に展開すると Premiere でそのまま開けます` : ''));
 
       if (model.warnings.length) {
         alert('書き出しました。注意:\n- ' + model.warnings.join('\n- '));

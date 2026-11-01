@@ -123,13 +123,19 @@
     }
 
     // pass 1: CRC-32 (reads file bytes in chunks; nothing is retained)
+    // Four files at a time: with hundreds of entries the per-file read latency, not the CRC, dominates.
     const files = items.filter((x) => !x.dir && x.size > 0);
     let done = 0;
-    for (const it of files) {
-      it.crc = it.data instanceof Uint8Array ? crc32Update(0, it.data) : await crc32OfBlob(it.data);
-      done += 1;
-      if (o.onProgress) o.onProgress(done, files.length, it.name);
-    }
+    let next = 0;
+    const worker = async () => {
+      while (next < files.length) {
+        const it = files[next++];
+        it.crc = it.data instanceof Uint8Array ? crc32Update(0, it.data) : await crc32OfBlob(it.data);
+        done += 1;
+        if (o.onProgress) o.onProgress(done, files.length, it.name);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, files.length) }, worker));
 
     // pass 2: lay out headers + data references
     const parts = [];

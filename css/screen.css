@@ -739,11 +739,43 @@
     transition: opacity 0.12s;
 }
 .drop-banner.is-visible { opacity: 1; }
-.sort-undo {
+.sort-undo,
+.status-action {
     margin-left: 4px;
     padding: 2px 8px;
     font-size: 12px;
 }
+
+/* =====================================================================
+   LINK MEDIA (lite saves / link-only exports) and "未リンク" cuts
+   ===================================================================== */
+.storage-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    margin: 0 0 8px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+}
+.storage-options label { cursor: pointer; }
+.opt-note { margin-left: 6px; letter-spacing: 0; color: var(--muted-text); }
+.media-folder-wrap { display: flex; align-items: center; gap: 6px; flex: 1 1 280px; }
+.media-folder-wrap input {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11px;
+    padding: 3px 6px;
+    border: 1px solid var(--btn-border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-color);
+}
+.media-folder-wrap[hidden], #btn-relink-media[hidden] { display: none !important; }
+.visual-box.is-missing,
+.bgm-box.is-missing { outline: 2px dashed #b00020; outline-offset: -2px; }
+.visual-box.is-missing .file-name::before,
+.bgm-box.is-missing .file-name::before { content: "未リンク · "; color: #ffb4b4; }
 
 /* =====================================================================
    Row actions popup (⋯ menu). position:fixed; JS sets left/top.
@@ -900,10 +932,18 @@ button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
     .bgm-box:empty::after { line-height: 44px; }
     .bgm-action { height: 44px; min-width: 56px; }
 
+    /* --- LINK MEDIA --- */
+    .storage-options { gap: 4px 10px; }
+    .storage-options .opt-link { display: flex; align-items: center; gap: 6px; min-height: 44px; flex-wrap: wrap; }
+    .storage-options input[type="checkbox"] { width: 20px; height: 20px; }
+    .opt-note { margin-left: 0; flex: 1 1 100%; }
+    .media-folder-wrap { flex: 1 1 100%; flex-wrap: wrap; }
+    .media-folder-wrap input { font-size: 16px; padding: 8px; flex: 1 1 100%; }
+
     /* --- sort toolbar --- */
     .storyboard-toolbar { flex-direction: column; align-items: stretch; gap: 6px; }
     .btn-sort { min-height: 44px; font-size: 12px; }
-    .sort-undo { min-height: 36px; padding: 0 12px; }
+    .sort-undo, .status-action { min-height: 36px; padding: 0 12px; }
 
     /* --- storyboard: table -> cards --- */
     .page .storyboard-table,
@@ -1037,5 +1077,6 @@ button, .visual-box, .bgm-box, input, select { touch-action: manipulation; }
 @media print {
     .nle-folder-wrap,
     .storyboard-toolbar,
+    .storage-options,
     .drop-banner { display: none; }
 }

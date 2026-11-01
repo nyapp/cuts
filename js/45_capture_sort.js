@@ -14,7 +14,7 @@
 // The parsers are pure functions of a File/Blob so they can be tested in Node
 // (see scripts/capture_sort_smoke.js). DOM code is at the bottom.
 //
-// Depends on globals in the browser: assetStore, renumberCuts.
+// Depends on globals in the browser: assetStore, renumberCuts, CutsMediaMeta (js/44_media_meta.js).
 
 (function (root) {
   'use strict';
@@ -182,62 +182,13 @@
   }
 
   // ---------------------------------------------------------------------------
-  // MP4 / MOV: moov > mvhd creation_time
+  // MP4 / MOV: moov > mvhd creation_time (parser shared with js/44_media_meta.js)
   // ---------------------------------------------------------------------------
-  const MAC_EPOCH_OFFSET_SEC = 2082844800; // 1904-01-01 -> 1970-01-01
-
-  function fourcc(dv, o) {
-    return String.fromCharCode(dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3));
-  }
-
-  function findMvhdCreationSec(buf, start) {
-    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-    let p = start;
-    while (p + 8 <= buf.length) {
-      const size = dv.getUint32(p);
-      const type = fourcc(dv, p + 4);
-      if (size < 8) break;
-      if (type === 'mvhd') {
-        const version = dv.getUint8(p + 8);
-        if (version === 1) {
-          if (p + 20 > buf.length) return null;
-          return dv.getUint32(p + 12) * 4294967296 + dv.getUint32(p + 16);
-        }
-        if (p + 16 > buf.length) return null;
-        return dv.getUint32(p + 12);
-      }
-      p += size;
-    }
-    return null;
-  }
+  const mediaMeta = typeof module !== 'undefined' && module.exports ? require('./44_media_meta.js') : root.CutsMediaMeta;
 
   async function readVideoCaptureTime(file) {
-    const total = file.size;
-    let pos = 0;
-    let guard = 0;
-    while (pos + 8 <= total && guard++ < 10000) {
-      const hdr = new DataView(await file.slice(pos, pos + 16).arrayBuffer());
-      if (hdr.byteLength < 8) break;
-      let size = hdr.getUint32(0);
-      const type = fourcc(hdr, 4);
-      let headerLen = 8;
-      if (size === 1 && hdr.byteLength >= 16) {
-        size = hdr.getUint32(8) * 4294967296 + hdr.getUint32(12);
-        headerLen = 16;
-      } else if (size === 0) {
-        size = total - pos;
-      }
-      if (size < headerLen) break;
-      if (type === 'moov') {
-        const len = Math.min(size, 32 * 1024 * 1024);
-        const buf = new Uint8Array(await file.slice(pos, pos + len).arrayBuffer());
-        const sec = findMvhdCreationSec(buf, headerLen);
-        if (!sec || sec <= MAC_EPOCH_OFFSET_SEC) return null; // 0 / unset
-        return (sec - MAC_EPOCH_OFFSET_SEC) * 1000;
-      }
-      pos += size;
-    }
-    return null;
+    const m = await mediaMeta.readIsoVideoMeta(file);
+    return m ? m.createdMs : null;
   }
 
   // ---------------------------------------------------------------------------

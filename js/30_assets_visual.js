@@ -73,7 +73,11 @@ function clearVisualBox(box) {
   delete box.dataset.kind;
   delete box.dataset.assetId;
   delete box.dataset.assetName;
+  delete box.dataset.assetSize;
   delete box.dataset.sourceDuration;
+  delete box.dataset.thumbState;
+  box.classList.remove("is-missing");
+  if (window.CutsLazyThumbs) window.CutsLazyThumbs.forget(box);
 
   // Also remove attributes (kebab-case) to avoid stale values being serialized elsewhere
   box.removeAttribute("data-filename");
@@ -81,6 +85,7 @@ function clearVisualBox(box) {
   box.removeAttribute("data-kind");
   box.removeAttribute("data-asset-id");
   box.removeAttribute("data-asset-name");
+  box.removeAttribute("data-asset-size");
   box.removeAttribute("data-source-duration");
 }
 
@@ -138,8 +143,159 @@ function makeImageThumbDataUrl(file) {
   });
 }
 
+// Lean video thumbnail for the lazy queue: one hidden <video>, one seek, one canvas draw, then the decoder
+// is released. (The older renderImageToBox video path also measures the duration with several timers and
+// play() calls, which is far heavier; durations now come from the file header.) -> data URL, or "" on failure.
+function makeVideoThumbDataUrl(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.controls = false;
+    v.setAttribute("muted", "");
+    v.setAttribute("playsinline", "");
+    v.style.cssText = "position:fixed;left:-99999px;top:0;width:1px;height:1px";
+
+    let settled = false;
+    let timer = null;
+    const finish = (dataUrl) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { v.pause(); } catch (_) {}
+      try { v.removeAttribute("src"); v.load(); } catch (_) {}   // free the decoder now
+      try { v.remove(); } catch (_) {}
+      try { URL.revokeObjectURL(url); } catch (_) {}
+      resolve(dataUrl || "");
+    };
+
+    // -> { url, dark } | null (nothing drawn yet)
+    const grab = () => {
+      try {
+        const vw = v.videoWidth;
+        const vh = v.videoHeight;
+        if (!vw || !vh) return null;
+        const scale = Math.min(1, 640 / Math.max(vw, vh));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(vw * scale));
+        c.height = Math.max(1, Math.round(vh * scale));
+        const ctx = c.getContext("2d");
+        ctx.drawImage(v, 0, 0, c.width, c.height);
+        const n = Math.min(64, c.width) * Math.min(64, c.height);
+        const px = ctx.getImageData(0, 0, Math.min(64, c.width), Math.min(64, c.height)).data;
+        let sum = 0;
+        for (let i = 0; i < px.length; i += 4) sum += px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722;
+        const out = { url: c.toDataURL("image/jpeg", 0.85), dark: sum / n < 8 };
+        c.width = c.height = 0;                                  // release canvas memory right away
+        return out;
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const frame = () =>
+      new Promise((r) => {
+        if (typeof v.requestVideoFrameCallback === "function") {
+          try { v.requestVideoFrameCallback(() => r()); setTimeout(r, 300); return; } catch (_) {}
+        }
+        requestAnimationFrame(() => setTimeout(r, 30));
+      });
+
+    const seek = (t) =>
+      new Promise((r) => {
+        const done = () => { v.removeEventListener("seeked", done); r(); };
+        v.addEventListener("seeked", done);
+        setTimeout(done, 1500);
+        try { v.currentTime = Math.max(0, t); } catch (_) { done(); }
+      });
+
+    v.addEventListener("error", () => finish(""));
+    v.addEventListener(
+      "loadedmetadata",
+      async () => {
+        try {
+          const d = Number.isFinite(v.duration) ? v.duration : 0;
+          let best = null;
+          for (const t of d > 0 ? [Math.min(1, d * 0.1), d * 0.5] : [0.1]) {
+            await seek(t);
+            await frame();
+            const g = grab();
+            if (g) {
+              best = g;
+              if (!g.dark) break;
+            }
+          }
+          if (!best) {
+            // iOS Safari draws nothing until the element has played a frame: play muted for a moment
+            try {
+              await v.play();
+              await new Promise((r) => setTimeout(r, 150));
+              best = grab();
+              v.pause();
+            } catch (_) {}
+          }
+          finish(best ? best.url : "");
+        } catch (_) {
+          finish("");
+        }
+      },
+      { once: true }
+    );
+    timer = setTimeout(() => finish(""), 10000);
+    document.body.appendChild(v);
+    v.src = url;
+  });
+}
+
+// Register a visual without decoding anything: asset + name + badge only. The thumbnail is created later
+// (js/47_lazy_thumbs.js, when the cut scrolls into view) and the duration by applySourceDuration().
+function registerVisualLazy(file, kind, box) {
+  if (!file || !box) return;
+  const fileName = file.name && file.name.trim() ? file.name.trim() : "clipboard-file";
+  const old = box.dataset.assetId;
+  if (old) assetStore.delete(old);
+  box.dataset.filename = fileName;
+  box.dataset.filetype = file.type;
+  box.dataset.kind = kind;
+  setBoxAsset(box, file, kind);
+  const safeName = escapeHtml(fileName);
+  box.classList.add("has-image");
+  box.innerHTML = `
+    <div class="kind-badge">${kind === "video" ? "VID" : "IMG"}</div>
+    <div class="file-name" title="${safeName}">${safeName}</div>
+  `;
+}
+
+// Store a video's source length on the box and apply the same default cut length as the thumbnail path
+// (source length - 2 s, only while the cut still has the default 5 s or nothing).
+function applySourceDuration(box, seconds, opts) {
+  if (!box || !(seconds > 0)) return;
+  const rounded = Math.round(seconds * 100) / 100;
+  const str = String(rounded);
+  box.dataset.sourceDuration = str;
+  box.setAttribute("data-source-duration", str);
+  const badge = box.querySelector(".kind-badge");
+  if (badge && badge.textContent.trim().startsWith("VID")) badge.textContent = `VID ${str}s`;
+  const row = box.closest("tr");
+  const input = row ? row.querySelector(".input-duration") : null;
+  if (!input) return;
+  const cur = String(input.value || "").trim();
+  if (!cur || cur === "5") {
+    input.value = String(Math.round(Math.max(0, rounded - 2) * 100) / 100);
+    // Bulk callers (opts.skipRecalc) recalculate once at the end. The input handler reads selectionStart and
+    // recalculates every row, which forced a layout per clip (about a second of freezing per ~40 clips).
+    if (!(opts && opts.skipRecalc)) {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      if (typeof recalcStartTimes === "function") recalcStartTimes();
+    }
+  }
+}
+
 // onDone (optional) is called once when the thumbnail / metadata work for this file has finished.
-function renderImageToBox(file, box, onDone) {
+// opts.keepAsset: the box already holds this very file (registerVisualLazy) -> only build the thumbnail.
+function renderImageToBox(file, box, onDone, opts) {
   if (!file || !box) return;
 
   let finished = false;
@@ -153,8 +309,11 @@ function renderImageToBox(file, box, onDone) {
     }
   };
 
+  const keep = !!(
+    opts && opts.keepAsset && box.dataset.assetId && assetStore.get(box.dataset.assetId) === file
+  );
   const oldAssetId = box.dataset.assetId;
-  if (oldAssetId) assetStore.delete(oldAssetId);
+  if (oldAssetId && !keep) assetStore.delete(oldAssetId);
 
   const nameLower = (file.name || "").toLowerCase();
   const extIsVideo =
@@ -170,12 +329,14 @@ function renderImageToBox(file, box, onDone) {
     file.name && file.name.trim() ? file.name.trim() : "clipboard-file";
 
 
-  box.dataset.filename = fileName;
-  box.dataset.filetype = file.type;
-  box.dataset.kind = isVideo ? "video" : isImage ? "image" : "";
+  if (!keep) {
+    box.dataset.filename = fileName;
+    box.dataset.filetype = file.type;
+    box.dataset.kind = isVideo ? "video" : isImage ? "image" : "";
 
-  if (isImage) setBoxAsset(box, file, "image");
-  if (isVideo) setBoxAsset(box, file, "video");
+    if (isImage) setBoxAsset(box, file, "image");
+    if (isVideo) setBoxAsset(box, file, "video");
+  }
 
   // --- Image ---
   if (isImage) {
@@ -229,6 +390,11 @@ function renderImageToBox(file, box, onDone) {
       } catch (_) {}
       try {
         video.pause();
+      } catch (_) {}
+      try {
+        // Drop the source and reload so the decoder is freed now, not whenever the GC gets to it
+        video.removeAttribute("src");
+        video.load();
       } catch (_) {}
       try {
         video.remove();
@@ -372,8 +538,7 @@ function renderImageToBox(file, box, onDone) {
       try {
         box.dataset.sourceDuration = durationStr;
         box.setAttribute("data-source-duration", durationStr);
-        // Force a reflow to ensure attribute is set
-        void box.offsetHeight;
+        // (a forced reflow used to be here; it cost a full layout per clip and does nothing for attributes)
       } catch (e) {
         // Fallback if dataset fails
         box.setAttribute("data-source-duration", durationStr);

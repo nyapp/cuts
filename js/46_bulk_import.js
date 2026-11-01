@@ -13,7 +13,12 @@
 //
 // classifyFile() is a pure function so it can be tested in Node (scripts/bulk_import_smoke.js).
 //
-// Depends on globals in the browser: addRow, renumberCuts, renderImageToBox, CutsCaptureSort.
+// Importing is cheap and instant: every file is registered (name, badge, source duration from the file header)
+// without decoding it. Thumbnails are created lazily, only for cuts that are on screen (js/47_lazy_thumbs.js),
+// so hundreds of clips cost no decoder memory and no waiting.
+//
+// Depends on globals in the browser: addRow, renumberCuts, registerVisualLazy, applySourceDuration,
+// CutsMediaMeta, CutsLazyThumbs, CutsCaptureSort.
 
 (function (root) {
   'use strict';
@@ -26,9 +31,7 @@
     mov: 'video/quicktime', mp4: 'video/mp4', m4v: 'video/x-m4v', webm: 'video/webm',
     '3gp': 'video/3gpp', '3g2': 'video/3gpp2',
   };
-  const POOL_IMAGES = 3;        // thumbnails generated at the same time (desktop, or photos only)
-  const POOL_WITH_VIDEO = 2;    // touch devices decode only a few videos at once
-  const PER_FILE_TIMEOUT = 12000; // ms; a stuck decode must not block the rest
+  const META_POOL = 8;          // header reads are cheap, so many can run at once
 
   // -> { file, kind: 'image' | 'video' } or null (not a photo / video).
   // Files with an empty MIME type (common for HEIC / MOV on desktop browsers) get one from the extension,
@@ -60,7 +63,7 @@
     if (actionLabel && onAction) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'sort-undo';
+      b.className = 'status-action';
       b.textContent = actionLabel;
       b.addEventListener('click', onAction);
       el.appendChild(document.createTextNode(' '));
@@ -86,16 +89,6 @@
       if (next !== row) tbody.insertBefore(row, next);
     }
     return row;
-  }
-
-  function loadOne(file, box) {
-    return new Promise((resolve) => {
-      const t = setTimeout(resolve, PER_FILE_TIMEOUT);
-      renderImageToBox(file, box, () => {
-        clearTimeout(t);
-        resolve();
-      });
-    });
   }
 
   async function runPool(tasks, limit, onStep) {
@@ -141,31 +134,49 @@
 
       if (options.intoBox) {
         const row = options.intoBox.closest('tr');
-        targets.push({ file: queue.shift().file, row });
+        const first = queue.shift();
+        targets.push({ file: first.file, kind: first.kind, row });
         ref = row;
       } else {
         const empties = Array.from(tbody.children).filter(isEmptyRow);
-        while (queue.length && empties.length) targets.push({ file: queue.shift().file, row: empties.shift() });
+        while (queue.length && empties.length) {
+          const m = queue.shift();
+          targets.push({ file: m.file, kind: m.kind, row: empties.shift() });
+        }
       }
       queue.forEach((m) => {
         const row = newRowAfter(ref);
         if (ref) ref = row;
-        targets.push({ file: m.file, row });
+        targets.push({ file: m.file, kind: m.kind, row });
       });
       renumberCuts();
 
       const total = targets.length;
-      setStatus(`取り込み中… 0 / ${total}`);
-      const tasks = targets.map((t) => () => loadOne(t.file, t.row.querySelector('.visual-box')));
-      const touch = typeof canHover === 'function' && !canHover();
-      const pool = media.some((m) => m.kind === 'video') && touch ? POOL_WITH_VIDEO : POOL_IMAGES;
-      await runPool(tasks, pool, (done) => setStatus(`取り込み中… ${done} / ${total}`));
+      // 1) register every file right away (no decoding)
+      targets.forEach((t) => {
+        const box = t.row.querySelector('.visual-box');
+        registerVisualLazy(t.file, t.kind, box);
+        t.box = box;
+        if (root.CutsLazyThumbs) root.CutsLazyThumbs.observe(box);
+      });
+
+      // 2) read each video's length from its file header (a few small reads per file)
+      const videos = targets.filter((t) => t.kind === 'video');
+      if (videos.length && root.CutsMediaMeta) {
+        setStatus(`取り込み中… 0 / ${videos.length}`);
+        const tasks = videos.map((t) => async () => {
+          const m = await root.CutsMediaMeta.readVideoMeta(t.file);
+          if (m && m.durationSec) applySourceDuration(t.box, m.durationSec, { skipRecalc: true });
+        });
+        await runPool(tasks, META_POOL, (done) => setStatus(`取り込み中… ${done} / ${videos.length}`));
+      }
+      if (typeof recalcStartTimes === 'function') recalcStartTimes();
       renumberCuts();
 
       const first = targets[0].row;
       if (first && first.scrollIntoView) first.scrollIntoView({ block: 'start', behavior: 'smooth' });
 
-      let msg = `${total} 件を取り込みました`;
+      let msg = `${total} 件を取り込みました（サムネイルは表示される範囲から順に作成します）`;
       if (skipped) msg += `（画像・動画以外 ${skipped} 件をスキップ）`;
       const sorter = root.CutsCaptureSort;
       if (total >= 2 && sorter && typeof sorter.sortRowsByCaptureTime === 'function') {

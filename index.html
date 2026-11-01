@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CUTS - Cut-based Unified Timeline Sheet</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<link rel="stylesheet" href="css/screen.css?v=1.6.0" media="all">
+<link rel="stylesheet" href="css/screen.css?v=1.7.0" media="all">
 </head>
 <body>
 
@@ -121,8 +121,21 @@
         <button class="btn-sort" id="btn-import-media" type="button" title="Import many photos / videos at once (one cut per file). You can also drop files on the page.">IMPORT MEDIA</button>
         <input type="file" id="bulk-media-input" multiple accept="image/*,video/*,.heic,.heif,.mov,.mp4,.m4v" style="display:none">
         <button class="btn-sort" id="btn-sort-capture" type="button" title="Reorder cuts by when each image / video was captured (photo EXIF, video metadata)">SORT BY CAPTURE TIME</button>
+        <button class="btn-sort" id="btn-relink-media" type="button" hidden title="Lite project: pick the folder that holds the original files; they are matched again by name and size">RELINK MEDIA</button>
+        <input type="file" id="relink-input" multiple style="display:none">
         <span class="sort-status" id="import-status" role="status" aria-live="polite"></span>
         <span class="sort-status" id="sort-status" role="status" aria-live="polite"></span>
+    </div>
+
+    <div class="storage-options">
+        <label class="opt-link" title="SAVE ZIP writes a lite project (no media) and EXPORT NLE writes the XML only, pointing at your original files. Keeps ZIPs small when there are many clips.">
+            <input type="checkbox" id="opt-link-media"> LINK MEDIA
+            <span class="opt-note">保存・書き出しで素材をコピーしない（元ファイルを参照）</span>
+        </label>
+        <span class="media-folder-wrap" id="media-folder-wrap" hidden>
+            <label for="media-folder">MEDIA FOLDER</label>
+            <input type="text" id="media-folder" placeholder="/Users/you/Movies/shoot（元ファイルのあるフォルダ。空欄なら Premiere で再リンク）" spellcheck="false" autocomplete="off">
+        </span>
     </div>
 
     <table class="storyboard-table">
@@ -138,21 +151,24 @@
             </tbody>
     </table>
 </div>
-<script src="js/00_version.js?v=1.6.0"></script>
-<script src="js/05_state.js?v=1.6.0"></script>
-<script src="js/10_dom.js?v=1.6.0"></script>
-<script src="js/12_zip_store.js?v=1.6.0"></script>
-<script src="js/20_asset_store.js?v=1.6.0"></script>
-<script src="js/30_assets_visual.js?v=1.6.0"></script>
-<script src="js/31_assets_bgm.js?v=1.6.0"></script>
-<script src="js/40_rows.js?v=1.6.0"></script>
-<script src="js/45_capture_sort.js?v=1.6.0"></script>
-<script src="js/46_bulk_import.js?v=1.6.0"></script>
-<script src="js/50_timeline.js?v=1.6.0"></script>
-<script src="js/60_keyboard_ime.js?v=1.6.0"></script>
-<script src="js/70_zip_io.js?v=1.6.0"></script>
-<script src="js/80_nle_export.js?v=1.6.0"></script>
-<script src="js/02_sanity_check.js?v=1.6.0"></script>
-<script src="js/01_bootstrap.js?v=1.6.0"></script>
+<script src="js/00_version.js?v=1.7.0"></script>
+<script src="js/05_state.js?v=1.7.0"></script>
+<script src="js/10_dom.js?v=1.7.0"></script>
+<script src="js/12_zip_store.js?v=1.7.0"></script>
+<script src="js/20_asset_store.js?v=1.7.0"></script>
+<script src="js/30_assets_visual.js?v=1.7.0"></script>
+<script src="js/31_assets_bgm.js?v=1.7.0"></script>
+<script src="js/40_rows.js?v=1.7.0"></script>
+<script src="js/44_media_meta.js?v=1.7.0"></script>
+<script src="js/45_capture_sort.js?v=1.7.0"></script>
+<script src="js/46_bulk_import.js?v=1.7.0"></script>
+<script src="js/47_lazy_thumbs.js?v=1.7.0"></script>
+<script src="js/48_media_link.js?v=1.7.0"></script>
+<script src="js/50_timeline.js?v=1.7.0"></script>
+<script src="js/60_keyboard_ime.js?v=1.7.0"></script>
+<script src="js/70_zip_io.js?v=1.7.0"></script>
+<script src="js/80_nle_export.js?v=1.7.0"></script>
+<script src="js/02_sanity_check.js?v=1.7.0"></script>
+<script src="js/01_bootstrap.js?v=1.7.0"></script>
 </body>
 </html>
